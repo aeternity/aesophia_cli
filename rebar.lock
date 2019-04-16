@@ -1,0 +1,24 @@
+{"1.1.0",
+[{<<"aebytecode">>,
+  {git,"https://github.com/aeternity/aebytecode.git",
+       {ref,"99bf097759dedbe7553f87a796bc7e1c7322e64b"}},
+  1},
+ {<<"aeserialization">>,
+  {git,"https://github.com/aeternity/aeserialization.git",
+       {ref,"816bf994ffb5cee218c3f22dc5fea296c9e0882e"}},
+  0},
+ {<<"aesophia">>,
+  {git,"https://github.com/aeternity/aesophia.git",
+       {ref,"a1d33e93abf19d0f99a11a2dcd21ddd1d46c127a"}},
+  0},
+ {<<"base58">>,
+  {git,"https://github.com/aeternity/erl-base58.git",
+       {ref,"60a335668a60328a29f9731b67c4a0e9e3d50ab6"}},
+  1},
+ {<<"eblake2">>,{pkg,<<"eblake2">>,<<"1.0.0">>},0},
+ {<<"getopt">>,{pkg,<<"getopt">>,<<"1.0.1">>},1}]}.
+[
+{pkg_hash,[
+ {<<"eblake2">>, <<"EC8AD20E438AAB3F2E8D5D118C366A0754219195F8A0F536587440F8F9BCF2EF">>},
+ {<<"getopt">>, <<"C73A9FA687B217F2FF79F68A3B637711BB1936E712B521D8CE466B29CBF7808A">>}]}
+].
