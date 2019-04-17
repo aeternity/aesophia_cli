@@ -5,12 +5,16 @@
 -define(OPT_SPEC,
     [ {src_file, undefined, undefined, string, "Sophia source code file"}
     , {help, $h, "help", undefined, "Show this message"}
-    , {create_calldata, $c, "create_calldata", string,
-        "Create calldata with respect to compiled contract in this file"}
+    , {create_json_aci, undefined, "create_json_aci", string,
+        "Create ACI in JSON format"}
+    , {create_stub_aci, undefined, "create_stub_aci", string,
+        "Create ACI stub-contract"}
+    , {create_calldata, undefined, "create_calldata", string,
+        "Create calldata with respect to (stub-)contract in this file"}
     , {create_calldata_fun, undefined, "calldata_fun", string,
-        "Calldata creation - using function + arguments - function"}
+        "Calldata creation - name of function"}
     , {create_calldata_args, undefined, "calldata_args", string,
-        "Calldata creation - using function + arguments - arguments"}
+        "Calldata creation - function arguments, e.g. \"42, true, [1, 3, 7]\""}
     , {decode_data, undefined, "decode_data", string,
         "Decode contract call result, input is a contract bytearray (cb_...)"}
     , {decode_data_type, undefined, "decode_type", string,
@@ -25,26 +29,37 @@ usage() ->
     io:format("EXAMPLES:\n"
               "[compile] :\n"
               "  aesophia_cli identity.aes -o identity.aeb\n"
+              "[create aci stub] : \n"
+              "  aesophia_cli --create_stub_aci identity.aes\n"
+              "[create aci JSON] : \n"
+              "  aesophia_cli --create_json_aci identity.aes -o identity.json\n"
               "[create calldata] :\n"
-              "  aesophia_cli --create_calldata identity.aeb --calldata_fun main --calldata_args 42\n"
+              "  aesophia_cli --create_calldata identity.aes --calldata_fun main --calldata_args 42\n"
               "[decode data] :\n"
               "  aesophia_cli --decode_data cb_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACr8s/aY --decode_type int\n\n").
 
 main(Args) ->
     case getopt:parse(?OPT_SPEC, Args) of
         {ok, {Opts, []}} ->
-            IsHelp = proplists:get_value(help, Opts, false),
-            IsVersion = proplists:get_value(version, Opts, false),
+            IsHelp         = proplists:get_value(help, Opts, false),
+            IsVersion      = proplists:get_value(version, Opts, false),
             CreateCallData = proplists:get_value(create_calldata, Opts, undefined),
-            DecodeData = proplists:get_value(decode_data, Opts, undefined),
+            DecodeData     = proplists:get_value(decode_data, Opts, undefined),
+            CreateACIJSON  = proplists:get_value(create_json_aci, Opts, undefined),
+            CreateACIStub  = proplists:get_value(create_stub_aci, Opts, undefined),
             if  IsHelp ->
                     usage();
                 CreateCallData /= undefined ->
                     create_calldata(CreateCallData, Opts);
                 DecodeData /= undefined ->
                     decode_data(DecodeData, Opts);
+                CreateACIJSON /= undefined ->
+                    create_aci(json, CreateACIJSON, Opts);
+                CreateACIStub /= undefined ->
+                    create_aci(stub, CreateACIStub, Opts);
                 IsVersion ->
-                    io:format("Sophia compiler version 1.4.0\n", []);
+                    {ok, Vsn} = aeso_compiler:version(),
+                    io:format("Sophia compiler version ~s\n", [Vsn]);
                 true ->
                     compile(Opts)
             end;
@@ -86,57 +101,71 @@ compile(File, Opts) ->
             {error, list_to_binary(lists:flatten(ErrorString))}
     end.
 
+create_aci(Type, ContractFile, Opts) ->
+    case file:read_file(ContractFile) of
+        {ok, Bin} ->
+            Code = binary_to_list(Bin),
+            create_aci_(Type, Code, Opts);
+        {error, _} ->
+            io:format("Error: Could not find file ~s\n\n", [ContractFile]),
+            usage()
+    end.
+
+create_aci_(Type, Code, Opts) ->
+    Verbose = proplists:get_value(verbose, Opts, false),
+    OutFile = proplists:get_value(outfile, Opts, undefined),
+    try aeso_aci:encode(Code, [pp_ast || Verbose]) of
+        {ok, Enc} ->
+            io:format("ACI generated successfully!\n\n"),
+            case Type of
+                json ->
+                    write_aci(OutFile, io_lib:format("~s\n", [Enc]));
+                stub ->
+                    write_aci(OutFile, io_lib:format("~s\n", [aeso_aci:decode(Enc)]))
+            end;
+        {error, Reason} ->
+            io:format("Error: Failed to create ACI - ~p\n", [Reason]),
+            {error, Reason}
+    catch _:Reason ->
+        io:format("Error: Failed to create ACI - ~p\n", [Reason]),
+        {error, Reason}
+    end.
 
 create_calldata(ContractFile, Opts) ->
     case file:read_file(ContractFile) of
         {ok, Bin} ->
-            case aeser_api_encoder:safe_decode(contract_bytearray, Bin) of
-                {ok, SerContract} ->
-                    try
-                        {ok, Contract} = aescli_ser:deserialize(SerContract),
-                        create_calldata_(Contract, Opts)
-                    catch _:_ ->
-                        io:format("Error: Bad contract file ~s\n\n", [ContractFile]), usage()
-                    end;
-                {error, _} ->
-                    io:format("Bad input format in file ~s, expected "
-                              "'contract_bytearray'\n", [ContractFile])
-            end;
+            Code = binary_to_list(Bin),
+            create_calldata_(Code, Opts);
         {error, _} ->
-            io:format("Error: Could not find file ~s\n\n", [ContractFile]), usage()
+            io:format("Error: Could not find file ~s\n\n", [ContractFile]),
+            usage()
     end.
 
-
 create_calldata_(Contract, Opts) ->
-    case proplists:get_value(src_file, Opts, undefined) of
-        undefined -> %% Check if old deprecated style is used
-            case {proplists:get_value(create_calldata_fun, Opts, undefined),
-                  proplists:get_value(create_calldata_args, Opts, undefined)} of
-                {undefined, _} ->
-                    io:format("Error: not enough create call data input\n\n"), usage();
-                {_, undefined} ->
-                    io:format("Error: not enough create call data input\n\n"), usage();
-                {Fun, Args} ->
-                    create_calldata(Contract, Fun, Args, Opts)
-            end;
-        CallFile ->
-            case file:read_file(CallFile) of
-                {ok, Bin} ->
-                    create_calldata(Contract, "", binary_to_list(Bin), Opts);
-                {error, _} ->
-                    io:format("Error: Could not find file ~s\n\n", [CallFile]), usage()
+    case {proplists:get_value(create_calldata_fun, Opts, undefined),
+          proplists:get_value(create_calldata_args, Opts, undefined)} of
+        {undefined, _} ->
+            io:format("Error: not enough create call data input\n\n"), usage();
+        {_, undefined} ->
+            io:format("Error: not enough create call data input\n\n"), usage();
+        {Fun, Args0} ->
+            case prepare_args(Args0) of
+                {ok, Args} ->
+                    create_calldata(Contract, Fun, Args, Opts);
+                error ->
+                    io:format("Error: could not parse the arguments, "
+                              "they should be one string with comma separated literals.\n")
             end
     end.
 
 create_calldata(Contract, CallFun, CallArgs, Opts) ->
     OutFile = proplists:get_value(outfile, Opts, undefined),
-
     try
         case aeso_compiler:create_calldata(Contract, CallFun, CallArgs) of
             {ok, CallData, _CallDataType, _OutputType} ->
                 write_calldata(OutFile, CallData);
             Err = {error, Reason} ->
-                io:format("Error: Create calldata failed: ~p\n\n", [Reason]),
+                io:format("Error: Create calldata failed:\n~s\n", [Reason]),
                 Err
         end
     catch error:Error ->
@@ -199,4 +228,24 @@ write_bytecode(OutFile, CompileMap) ->
             io:format("Compiled successfully!\n"),
             io:format("Output written to: ~s\n\n", [OutFile]),
             file:write_file(OutFile, ByteCode)
+    end.
+
+write_aci(undefined, ACI) ->
+    io:format("~s", [ACI]);
+write_aci(OutFile, ACI) ->
+    io:format("Output written to: ~s\n", [OutFile]),
+    file:write_file(OutFile, ACI).
+
+%% Maybe better to do on the compiler side...
+prepare_args("") ->
+    {ok, []};
+prepare_args(ArgsStr) ->
+    case aeso_parser:string("contract C =\n  function foo() = (" ++ ArgsStr ++ ")") of
+        {ok, [{contract, _, _, [{letfun, _, _, _, _, Args}]}]} ->
+            case Args of
+                {tuple, _, Args1} -> {ok, [prettypr:format(aeso_pretty:expr(Arg)) || Arg <- Args1]};
+                _                 -> {ok, [prettypr:format(aeso_pretty:expr(Args))]}
+            end;
+        _ ->
+            error
     end.
