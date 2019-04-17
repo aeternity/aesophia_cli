@@ -11,7 +11,7 @@
         ]).
 
 %% -- Contract serialization
--define(SOPHIA_CONTRACT_VSN, 1).
+-define(SOPHIA_CONTRACT_VSN, 2).
 -define(SOPHIA_CONTRACT_VSN_1, 1).
 -define(SOPHIA_CONTRACT_VSN_2, 2).
 -define(COMPILER_SOPHIA_TAG, compiler_sophia).
