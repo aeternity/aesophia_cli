@@ -192,7 +192,7 @@ decode_data(EncData, Opts) ->
 decode_data_(Data, SophiaType, _Opts) ->
     case aeso_compiler:sophia_type_to_typerep(SophiaType) of
         {ok, TypeRep} ->
-            try aeso_heap:from_binary(TypeRep, Data) of
+            try aeb_heap:from_binary(TypeRep, Data) of
                 {ok, Term} ->
                     io:format("Decoded data:\n~p\n", [Term]);
                 Err = {error, Reason} ->
