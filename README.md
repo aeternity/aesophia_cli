@@ -1,7 +1,7 @@
 aesophia_cli
 =====
 
-An escript
+A simple command line interface for the [Sophia compiler](https://github.com/aeternity/aesophia).
 
 Build
 -----
@@ -11,4 +11,8 @@ Build
 Run
 ---
 
-    $ _build/default/bin/aesophia_cli
+    $ ./aesophia_cli
+
+Test
+---
+    $ ./test/test_cli.sh
