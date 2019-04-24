@@ -243,9 +243,12 @@ prepare_args(ArgsStr) ->
     case aeso_parser:string("contract C =\n  function foo() = (" ++ ArgsStr ++ ")") of
         {ok, [{contract, _, _, [{letfun, _, _, _, _, Args}]}]} ->
             case Args of
-                {tuple, _, Args1} -> {ok, [prettypr:format(aeso_pretty:expr(Arg)) || Arg <- Args1]};
-                _                 -> {ok, [prettypr:format(aeso_pretty:expr(Args))]}
+                {tuple, _, Args1} -> {ok, [prepare_arg(Arg) || Arg <- Args1]};
+                _                 -> {ok, [prepare_arg(Args)]}
             end;
         _ ->
             error
     end.
+
+prepare_arg({string, _, <<>>}) -> "\"\"";
+prepare_arg(Arg)               -> prettypr:format(aeso_pretty:expr(Arg)).
