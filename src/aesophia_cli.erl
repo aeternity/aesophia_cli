@@ -91,7 +91,7 @@ compile(File, Opts) ->
         {ok, Map} ->
             write_bytecode(OutFile, Map);
         {error, Reason} ->
-            io:format("Error: ~p\n\n", [Reason]),
+            io:format("Error:\n~s\n\n", [Reason]),
             {error, Reason}
     catch
         error:Error ->
@@ -124,7 +124,7 @@ create_aci_(Type, Code, Opts) ->
                     write_aci(OutFile, io_lib:format("~s\n", [aeso_aci:decode(Enc)]))
             end;
         {error, Reason} ->
-            io:format("Error: Failed to create ACI - ~p\n", [Reason]),
+            io:format("Error: Failed to create ACI - ~s\n", [Reason]),
             {error, Reason}
     catch _:Reason ->
         io:format("Error: Failed to create ACI - ~p\n", [Reason]),
