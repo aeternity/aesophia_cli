@@ -50,11 +50,24 @@ fi
 
 ## Decode data
 RES=`./aesophia_cli --decode_data cb_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACr8s/aY --decode_type int`
-if [ "${RES}" = "42" ]; then
-    echo -e "Test FAILED: decode data"
+echo -e "${RES}"
+RES=`echo "${RES}" | tail -n1`
+if [ "${RES}" != "42" ]; then
+    echo -e "Test FAILED: decode data\\n"
     STATUS=1
 else
-    echo -e "Test PASSED: decode data"
+    echo -e "Test PASSED: decode data\\n"
+fi
+
+## Decode data
+RES=`./aesophia_cli test/contracts/identity.aes --call_result cb_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACr8s/aY --call_result_fun main`
+echo -e "${RES}"
+RES=`echo "${RES}" | tail -n1`
+if [ "${RES}" != "42" ]; then
+    echo -e "Test FAILED: decode call result"
+    STATUS=1
+else
+    echo -e "Test PASSED: decode call result"
 fi
 
 rm -rf ${TMPFILE} ${TMPFILE}.*

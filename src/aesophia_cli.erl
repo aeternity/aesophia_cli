@@ -19,6 +19,12 @@
         "Decode contract call result, input is a contract bytearray (cb_...)"}
     , {decode_data_type, undefined, "decode_type", string,
         "The Sophia type to decode data into"}
+    , {decode_call_res, undefined, "call_result_type", {string, "ok"},
+        "Decode contract call result - 'ok' | 'revert' | 'error'"}
+    , {decode_call_val, undefined, "call_result", string,
+        "Decode contract call result - input is contract bytearray (cb_...) or string"}
+    , {decode_call_fun, undefined, "call_result_fun", string,
+        "Decode contract call result - function name"}
     , {outfile, $o, "out", string, "Output the result to file"}
     , {verbose, $v, "verbose", undefined, "Verbose output"}
     , {version, undefined, "version", undefined, "Sophia compiler version"}]).
@@ -35,6 +41,8 @@ usage() ->
               "  aesophia_cli --create_json_aci identity.aes -o identity.json\n"
               "[create calldata] :\n"
               "  aesophia_cli --create_calldata identity.aes --calldata_fun main --calldata_args 42\n"
+              "[decode call result] : \n"
+              "  aesophia_cli identity.aes --call_result cb_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACr8s/aY --call_result_fun main\n"
               "[decode data] :\n"
               "  aesophia_cli --decode_data cb_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACr8s/aY --decode_type int\n\n").
 
@@ -45,12 +53,15 @@ main(Args) ->
             IsVersion      = proplists:get_value(version, Opts, false),
             CreateCallData = proplists:get_value(create_calldata, Opts, undefined),
             DecodeData     = proplists:get_value(decode_data, Opts, undefined),
+            DecodeCall     = proplists:get_value(decode_call_val, Opts, undefined),
             CreateACIJSON  = proplists:get_value(create_json_aci, Opts, undefined),
             CreateACIStub  = proplists:get_value(create_stub_aci, Opts, undefined),
             if  IsHelp ->
                     usage();
                 CreateCallData /= undefined ->
                     create_calldata(CreateCallData, Opts);
+                DecodeCall /= undefined ->
+                    decode_call_res(DecodeCall, Opts);
                 DecodeData /= undefined ->
                     decode_data(DecodeData, Opts);
                 CreateACIJSON /= undefined ->
@@ -114,14 +125,15 @@ create_aci(Type, ContractFile, Opts) ->
 create_aci_(Type, Code, Opts) ->
     Verbose = proplists:get_value(verbose, Opts, false),
     OutFile = proplists:get_value(outfile, Opts, undefined),
-    try aeso_aci:encode(Code, [pp_ast || Verbose]) of
+    try aeso_aci:contract_interface(json, Code, [pp_ast || Verbose]) of
         {ok, Enc} ->
             io:format("ACI generated successfully!\n\n"),
             case Type of
                 json ->
-                    write_aci(OutFile, io_lib:format("~s\n", [Enc]));
+                    write_aci(OutFile, io_lib:format("~s\n", [jsx:encode(Enc)]));
                 stub ->
-                    write_aci(OutFile, io_lib:format("~s\n", [aeso_aci:decode(Enc)]))
+                    {ok, Stub} = aeso_aci:render_aci_json(Enc),
+                    write_aci(OutFile, io_lib:format("~s\n", [Stub]))
             end;
         {error, Reason} ->
             io:format("Error: Failed to create ACI - ~s\n", [Reason]),
@@ -173,6 +185,45 @@ create_calldata(Contract, CallFun, CallArgs, Opts) ->
         ErrorString = io_lib:format("Error: ~p in\n   ~p", [Error, Where]),
         io:format("~s\n", [ErrorString]),
         {error, list_to_binary(lists:flatten(ErrorString))}
+    end.
+
+decode_call_res(EncValue, Opts) ->
+    case proplists:get_value(src_file, Opts, undefined) of
+        undefined ->
+            io:format("Error: no input source file\n\n"),
+            usage();
+        File ->
+            case file:read_file(File) of
+                {ok, Bin} ->
+                    Code = binary_to_list(Bin),
+                    decode_call_res(EncValue, Code, Opts);
+                {error, _} ->
+                    io:format("Error: Could not find file ~s\n", [File])
+            end
+    end.
+
+decode_call_res(EncValue, Source, Opts) ->
+    case proplists:get_value(decode_call_fun, Opts, undefined) of
+        undefined ->
+            io:format("Error: no --call_result_fun given\n"),
+            usage();
+        FunName ->
+            case aeser_api_encoder:safe_decode(contract_bytearray, list_to_binary(EncValue)) of
+                {ok, CallValue} ->
+                    decode_call_res(Source, FunName, proplists:get_value(decode_call_res, Opts), CallValue);
+                {error, _} = Err ->
+                    io:format("Error: Bad call result value\n"),
+                    Err
+            end
+    end.
+
+decode_call_res(Source, FunName, CallRes, CallValue) ->
+    case aeso_compiler:to_sophia_value(Source, FunName,erlang:list_to_atom(CallRes), CallValue) of
+        {ok, Ast} ->
+            io:format("Decoded call result:\n~s\n", [prettypr:format(aeso_pretty:expr(Ast))]);
+        Err = {error, Reason} ->
+            io:format("Error: Failed to decode call result - ~p\n", [Reason]),
+            Err
     end.
 
 decode_data(EncData, Opts) ->
