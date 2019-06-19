@@ -174,7 +174,7 @@ create_calldata(Contract, CallFun, CallArgs, Opts) ->
     OutFile = proplists:get_value(outfile, Opts, undefined),
     try
         case aeso_compiler:create_calldata(Contract, CallFun, CallArgs) of
-            {ok, CallData, _CallDataType, _OutputType} ->
+            {ok, CallData} ->
                 write_calldata(OutFile, CallData);
             Err = {error, Reason} ->
                 io:format("Error: Create calldata failed:\n~s\n", [Reason]),
