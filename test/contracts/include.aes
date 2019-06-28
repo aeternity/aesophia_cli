@@ -1,0 +1,5 @@
+include "included.aes"
+
+contract Include =
+  entrypoint foo() =
+    Included.foo() < 43
