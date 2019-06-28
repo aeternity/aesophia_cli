@@ -12,6 +12,26 @@ else
     echo -e "Test PASSED: compile\\n"
 fi
 
+## Compile
+rm -f ${TMPFILE}.aeb
+./aesophia_cli test/contracts/include.aes -o ${TMPFILE}.aeb
+if [ ! -f ${TMPFILE}.aeb ]; then
+    echo -e "Test FAILED: compile\\n"
+    STATUS=1
+else
+    echo -e "Test PASSED: compile\\n"
+fi
+
+## Compile
+rm -f ${TMPFILE}.aeb
+./aesophia_cli test/contracts/include.aes -i test/contracts/ -o ${TMPFILE}.aeb
+if [ ! -f ${TMPFILE}.aeb ]; then
+    echo -e "Test FAILED: compile\\n"
+    STATUS=1
+else
+    echo -e "Test PASSED: compile\\n"
+fi
+
 ## Create ACI-stub
 ./aesophia_cli --create_stub_aci test/contracts/identity.aes -o ${TMPFILE}.aci_stub
 if [ ! -f ${TMPFILE}.aci_stub ]; then
@@ -20,6 +40,17 @@ if [ ! -f ${TMPFILE}.aci_stub ]; then
 else
     echo -e "Test PASSED: create aci stub\\n"
 fi
+
+## Create ACI-stub
+rm -f ${TMPFILE}.aci_stub
+./aesophia_cli --create_stub_aci test/contracts/include.aes -o ${TMPFILE}.aci_stub
+if [ ! -f ${TMPFILE}.aci_stub ]; then
+    echo -e "Test FAILED: create aci stub\\n"
+    STATUS=1
+else
+    echo -e "Test PASSED: create aci stub\\n"
+fi
+
 
 ## Create ACI-json
 ./aesophia_cli --create_json_aci test/contracts/identity.aes -o ${TMPFILE}.aci_json
@@ -46,6 +77,15 @@ if [ ! -f ${TMPFILE}.calldata2 ]; then
     STATUS=1
 else
     echo -e "Test PASSED: create calldata 2\\n"
+fi
+
+## Create calldata
+./aesophia_cli --create_calldata test/contracts/include.aes --calldata_fun foo --calldata_args "" -o ${TMPFILE}.calldata3
+if [ ! -f ${TMPFILE}.calldata3 ]; then
+    echo -e "Test FAILED: create calldata 3\\n"
+    STATUS=1
+else
+    echo -e "Test PASSED: create calldata 3\\n"
 fi
 
 ## Decode data

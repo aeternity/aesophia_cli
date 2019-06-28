@@ -25,6 +25,7 @@
         "Decode contract call result - input is contract bytearray (cb_...) or string"}
     , {decode_call_fun, undefined, "call_result_fun", string,
         "Decode contract call result - function name"}
+    , {include_path, $i, "include_path", string, "Explicit include path"}
     , {outfile, $o, "out", string, "Output the result to file"}
     , {verbose, $v, "verbose", undefined, "Verbose output"}
     , {version, undefined, "version", undefined, "Sophia compiler version"}]).
@@ -35,6 +36,8 @@ usage() ->
     io:format("EXAMPLES:\n"
               "[compile] :\n"
               "  aesophia_cli identity.aes -o identity.aeb\n"
+              "[compile with explicit include path] :\n"
+              "  aesophia_cli identity.aes -i /path/to/include/ -o identity.aeb\n"
               "[create aci stub] : \n"
               "  aesophia_cli --create_stub_aci identity.aes\n"
               "[create aci JSON] : \n"
@@ -97,8 +100,9 @@ compile(Opts) ->
 compile(File, Opts) ->
     Verbose = proplists:get_value(verbose, Opts, false),
     OutFile = proplists:get_value(outfile, Opts, undefined),
+    IncludePath = get_inc_path(Opts),
 
-    try aeso_compiler:file(File, [pp_ast || Verbose]) of
+    try aeso_compiler:file(File, [pp_ast || Verbose] ++ IncludePath) of
         {ok, Map} ->
             write_bytecode(OutFile, Map);
         {error, Reason} ->
@@ -113,19 +117,10 @@ compile(File, Opts) ->
     end.
 
 create_aci(Type, ContractFile, Opts) ->
-    case file:read_file(ContractFile) of
-        {ok, Bin} ->
-            Code = binary_to_list(Bin),
-            create_aci_(Type, Code, Opts);
-        {error, _} ->
-            io:format("Error: Could not find file ~s\n\n", [ContractFile]),
-            usage()
-    end.
-
-create_aci_(Type, Code, Opts) ->
     Verbose = proplists:get_value(verbose, Opts, false),
     OutFile = proplists:get_value(outfile, Opts, undefined),
-    try aeso_aci:contract_interface(json, Code, [pp_ast || Verbose]) of
+    IncPath = get_inc_path(Opts),
+    try aeso_aci:file(json, ContractFile, [pp_ast || Verbose] ++ IncPath) of
         {ok, Enc} ->
             io:format("ACI generated successfully!\n\n"),
             case Type of
@@ -147,13 +142,13 @@ create_calldata(ContractFile, Opts) ->
     case file:read_file(ContractFile) of
         {ok, Bin} ->
             Code = binary_to_list(Bin),
-            create_calldata_(Code, Opts);
+            create_calldata_(Code, Opts, get_inc_path(ContractFile, Opts));
         {error, _} ->
             io:format("Error: Could not find file ~s\n\n", [ContractFile]),
             usage()
     end.
 
-create_calldata_(Contract, Opts) ->
+create_calldata_(Contract, Opts, COpts) ->
     case {proplists:get_value(create_calldata_fun, Opts, undefined),
           proplists:get_value(create_calldata_args, Opts, undefined)} of
         {undefined, _} ->
@@ -163,18 +158,18 @@ create_calldata_(Contract, Opts) ->
         {Fun, Args0} ->
             case prepare_args(Args0) of
                 {ok, Args} ->
-                    create_calldata(Contract, Fun, Args, Opts);
+                    create_calldata(Contract, Fun, Args, Opts, COpts);
                 error ->
                     io:format("Error: could not parse the arguments, "
                               "they should be one string with comma separated literals.\n")
             end
     end.
 
-create_calldata(Contract, CallFun, CallArgs, Opts) ->
+create_calldata(Contract, CallFun, CallArgs, Opts, COpts) ->
     OutFile = proplists:get_value(outfile, Opts, undefined),
     try
-        case aeso_compiler:create_calldata(Contract, CallFun, CallArgs) of
-            {ok, CallData, _CallDataType, _OutputType} ->
+        case aeso_compiler:create_calldata(Contract, CallFun, CallArgs, COpts) of
+            {ok, CallData} ->
                 write_calldata(OutFile, CallData);
             Err = {error, Reason} ->
                 io:format("Error: Create calldata failed:\n~s\n", [Reason]),
@@ -196,13 +191,13 @@ decode_call_res(EncValue, Opts) ->
             case file:read_file(File) of
                 {ok, Bin} ->
                     Code = binary_to_list(Bin),
-                    decode_call_res(EncValue, Code, Opts);
+                    decode_call_res(EncValue, Code, Opts, get_inc_path(File, Opts));
                 {error, _} ->
                     io:format("Error: Could not find file ~s\n", [File])
             end
     end.
 
-decode_call_res(EncValue, Source, Opts) ->
+decode_call_res(EncValue, Source, Opts, COpts) ->
     case proplists:get_value(decode_call_fun, Opts, undefined) of
         undefined ->
             io:format("Error: no --call_result_fun given\n"),
@@ -210,15 +205,15 @@ decode_call_res(EncValue, Source, Opts) ->
         FunName ->
             case aeser_api_encoder:safe_decode(contract_bytearray, list_to_binary(EncValue)) of
                 {ok, CallValue} ->
-                    decode_call_res(Source, FunName, proplists:get_value(decode_call_res, Opts), CallValue);
+                    decode_call_res(Source, FunName, proplists:get_value(decode_call_res, Opts), CallValue, COpts);
                 {error, _} = Err ->
                     io:format("Error: Bad call result value\n"),
                     Err
             end
     end.
 
-decode_call_res(Source, FunName, CallRes, CallValue) ->
-    case aeso_compiler:to_sophia_value(Source, FunName,erlang:list_to_atom(CallRes), CallValue) of
+decode_call_res(Source, FunName, CallRes, CallValue, COpts) ->
+    case aeso_compiler:to_sophia_value(Source, FunName,erlang:list_to_atom(CallRes), CallValue, COpts) of
         {ok, Ast} ->
             io:format("Decoded call result:\n~s\n", [prettypr:format(aeso_pretty:expr(Ast))]);
         Err = {error, Reason} ->
@@ -303,3 +298,12 @@ prepare_args(ArgsStr) ->
 
 prepare_arg({string, _, <<>>}) -> "\"\"";
 prepare_arg(Arg)               -> prettypr:format(aeso_pretty:expr(Arg)).
+
+get_inc_path(File, Opts) ->
+    aeso_compiler:add_include_path(File, get_inc_path(Opts)).
+
+get_inc_path(Opts) ->
+    case [ Path || {include_path, Path} <- Opts ] of
+        []    -> [];
+        Paths -> [{include, {file_system, Paths}}]
+    end.
