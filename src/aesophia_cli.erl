@@ -26,6 +26,7 @@
     , {decode_call_fun, undefined, "call_result_fun", string,
         "Decode contract call result - function name"}
     , {include_path, $i, "include_path", string, "Explicit include path"}
+    , {backend, $b, "backend", {string, "fate"}, "Compiler backend; fate | aevm"}
     , {outfile, $o, "out", string, "Output the result to file"}
     , {verbose, $v, "verbose", undefined, "Verbose output"}
     , {version, undefined, "version", undefined, "Sophia compiler version"}]).
@@ -34,8 +35,10 @@ usage() ->
     getopt:usage(?OPT_SPEC, "aesophia_cli"),
     timer:sleep(10),
     io:format("EXAMPLES:\n"
-              "[compile] :\n"
+              "[compile (for default FATE backend)] :\n"
               "  aesophia_cli identity.aes -o identity.aeb\n"
+              "[compile (for AEVM)] :\n"
+              "  aesophia_cli identity.aes -b aevm -o identity.aeb\n"
               "[compile with explicit include path] :\n"
               "  aesophia_cli identity.aes -i /path/to/include/ -o identity.aeb\n"
               "[create aci stub] : \n"
@@ -45,9 +48,9 @@ usage() ->
               "[create calldata] :\n"
               "  aesophia_cli --create_calldata identity.aes --calldata_fun main --calldata_args 42\n"
               "[decode call result] : \n"
-              "  aesophia_cli identity.aes --call_result cb_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACr8s/aY --call_result_fun main\n"
+              "  aesophia_cli identity.aes -b aevm --call_result cb_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACr8s/aY --call_result_fun main\n"
               "[decode data] :\n"
-              "  aesophia_cli --decode_data cb_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACr8s/aY --decode_type int\n\n").
+              "  aesophia_cli -b aevm --decode_data cb_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACr8s/aY --decode_type int\n\n").
 
 main(Args) ->
     case getopt:parse(?OPT_SPEC, Args) of
@@ -98,11 +101,12 @@ compile(Opts) ->
     end.
 
 compile(File, Opts) ->
-    Verbose = proplists:get_value(verbose, Opts, false),
     OutFile = proplists:get_value(outfile, Opts, undefined),
     IncludePath = get_inc_path(Opts),
+    Backend = get_backend(Opts),
+    Verbose = get_verbose(Opts),
 
-    try aeso_compiler:file(File, [pp_ast || Verbose] ++ IncludePath) of
+    try aeso_compiler:file(File, Verbose ++ IncludePath ++ Backend) of
         {ok, Map} ->
             write_bytecode(OutFile, Map);
         {error, Reason} ->
@@ -117,10 +121,10 @@ compile(File, Opts) ->
     end.
 
 create_aci(Type, ContractFile, Opts) ->
-    Verbose = proplists:get_value(verbose, Opts, false),
     OutFile = proplists:get_value(outfile, Opts, undefined),
     IncPath = get_inc_path(Opts),
-    try aeso_aci:file(json, ContractFile, [pp_ast || Verbose] ++ IncPath) of
+    Verbose = get_verbose(Opts),
+    try aeso_aci:file(json, ContractFile, Verbose ++ IncPath) of
         {ok, Enc} ->
             io:format("ACI generated successfully!\n\n"),
             case Type of
@@ -167,8 +171,9 @@ create_calldata_(Contract, Opts, COpts) ->
 
 create_calldata(Contract, CallFun, CallArgs, Opts, COpts) ->
     OutFile = proplists:get_value(outfile, Opts, undefined),
+    Backend = get_backend(Opts),
     try
-        case aeso_compiler:create_calldata(Contract, CallFun, CallArgs, COpts) of
+        case aeso_compiler:create_calldata(Contract, CallFun, CallArgs, COpts ++ Backend) of
             {ok, CallData} ->
                 write_calldata(OutFile, CallData);
             Err = {error, Reason} ->
@@ -191,7 +196,8 @@ decode_call_res(EncValue, Opts) ->
             case file:read_file(File) of
                 {ok, Bin} ->
                     Code = binary_to_list(Bin),
-                    decode_call_res(EncValue, Code, Opts, get_inc_path(File, Opts));
+                    Backend = get_backend(Opts),
+                    decode_call_res(EncValue, Code, Opts, Backend ++ get_inc_path(File, Opts));
                 {error, _} ->
                     io:format("Error: Could not find file ~s\n", [File])
             end
@@ -212,8 +218,9 @@ decode_call_res(EncValue, Source, Opts, COpts) ->
             end
     end.
 
-decode_call_res(Source, FunName, CallRes, CallValue, COpts) ->
-    case aeso_compiler:to_sophia_value(Source, FunName,erlang:list_to_atom(CallRes), CallValue, COpts) of
+decode_call_res(Source, FunName, CallRes0, CallValue, COpts) ->
+    CallRes = erlang:list_to_atom(CallRes0),
+    case aeso_compiler:to_sophia_value(Source, FunName, CallRes, CallValue, COpts) of
         {ok, Ast} ->
             io:format("Decoded call result:\n~s\n", [prettypr:format(aeso_pretty:expr(Ast))]);
         Err = {error, Reason} ->
@@ -222,17 +229,26 @@ decode_call_res(Source, FunName, CallRes, CallValue, COpts) ->
     end.
 
 decode_data(EncData, Opts) ->
-    case aeser_api_encoder:safe_decode(contract_bytearray, list_to_binary(EncData)) of
-        {ok, Data} ->
-            case proplists:get_value(decode_data_type, Opts, undefined) of
-                undefined ->
-                    io:format("Error: Missing 'decode_type` parameter\n");
-                SophiaType ->
-                    decode_data_(Data, SophiaType, Opts)
+    case proplists:get_value(backend, Opts, "fate") of
+        "aevm" ->
+            case aeser_api_encoder:safe_decode(contract_bytearray, list_to_binary(EncData)) of
+                {ok, Data} ->
+                    decode_data_(Data, Opts);
+                Err = {error, Reason} ->
+                    io:format("Error: Bad data - ~p\n", [Reason]),
+                    Err
             end;
-        Err = {error, Reason} ->
-            io:format("Error: Bad data - ~p\n", [Reason]),
-            Err
+        _ ->
+            io:format("Error: decode_data only supported for AEVM data\n", []),
+            {error, decode_data_for_fate_not_supported}
+    end.
+
+decode_data_(Data, Opts) ->
+    case proplists:get_value(decode_data_type, Opts, undefined) of
+        undefined ->
+            io:format("Error: Missing 'decode_type` parameter\n");
+        SophiaType ->
+            decode_data_(Data, SophiaType, Opts)
     end.
 
 decode_data_(Data, SophiaType, _Opts) ->
@@ -306,4 +322,16 @@ get_inc_path(Opts) ->
     case [ Path || {include_path, Path} <- Opts ] of
         []    -> [];
         Paths -> [{include, {file_system, Paths}}]
+    end.
+
+get_verbose(Opts) ->
+    case proplists:get_value(verbose, Opts, false) of
+        false -> [];
+        true  -> [pp_ast]
+    end.
+
+get_backend(Opts) ->
+    case proplists:get_value(backend, Opts, "fate") of
+        "aevm" -> [{backend, aevm}];
+        _fate  -> [{backend, fate}]
     end.

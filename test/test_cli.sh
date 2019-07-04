@@ -89,7 +89,7 @@ else
 fi
 
 ## Decode data
-RES=`./aesophia_cli --decode_data cb_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACr8s/aY --decode_type int`
+RES=`./aesophia_cli -b aevm --decode_data cb_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACr8s/aY --decode_type int`
 echo -e "${RES}"
 RES=`echo "${RES}" | tail -n1`
 if [ "${RES}" != "42" ]; then
@@ -100,7 +100,7 @@ else
 fi
 
 ## Decode data
-RES=`./aesophia_cli test/contracts/identity.aes --call_result cb_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACr8s/aY --call_result_fun main`
+RES=`./aesophia_cli -b aevm test/contracts/identity.aes --call_result cb_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACr8s/aY --call_result_fun main`
 echo -e "${RES}"
 RES=`echo "${RES}" | tail -n1`
 if [ "${RES}" != "42" ]; then
