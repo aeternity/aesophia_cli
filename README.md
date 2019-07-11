@@ -6,7 +6,7 @@ A simple command line interface for the [Sophia compiler](https://github.com/aet
 Build
 -----
 
-    $ rebar3 escriptize
+    $ ./rebar3 escriptize
 
 Run
 ---
