@@ -13,6 +13,15 @@ else
 fi
 
 ## Compile
+./aesophia_cli test/contracts/identity.aes -b aevm -o ${TMPFILE}.aeb
+if [ ! -f ${TMPFILE}.aeb ]; then
+    echo -e "Test FAILED: compile\\n"
+    STATUS=1
+else
+    echo -e "Test PASSED: compile\\n"
+fi
+
+## Compile
 rm -f ${TMPFILE}.aeb
 ./aesophia_cli test/contracts/include.aes -o ${TMPFILE}.aeb
 if [ ! -f ${TMPFILE}.aeb ]; then

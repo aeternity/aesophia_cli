@@ -280,8 +280,10 @@ write_calldata(OutFile, CallData) ->
             file:write_file(OutFile, EncCallData)
     end.
 
-write_bytecode(OutFile, CompileMap) ->
-    SerByteCode = aescli_ser:serialize(CompileMap),
+write_bytecode(OutFile, CompileMap = #{ contract_source := SourceStr }) ->
+    %% eblake2 is slow - but NIFs don't work in escript (easily...)
+    {ok, SourceHash} = eblake2:blake2b(32, list_to_binary(SourceStr)),
+    SerByteCode = aeser_contract_code:serialize(CompileMap#{ source_hash => SourceHash }),
     ByteCode = aeser_api_encoder:encode(contract_bytearray, SerByteCode),
     case OutFile of
         undefined ->
