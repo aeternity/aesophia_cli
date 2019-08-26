@@ -1,0 +1,21 @@
+version: 2.1
+
+executors:
+  aebuilder:
+    docker:
+      - image: aeternity/builder
+        user: builder
+    working_directory: ~/aesophia
+
+jobs:
+  build:
+    executor: aebuilder
+    steps:
+      - checkout
+      - run:
+          name: Build
+          command: ./rebar3 escriptize
+      - run:
+          name: Test
+          command: ./test/test_cli.sh
+     #TODO - store artifacts
