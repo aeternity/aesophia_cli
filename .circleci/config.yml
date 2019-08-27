@@ -23,7 +23,6 @@ jobs:
           command: |
             mkdir /tmp/artifacts
             mv aesophia_cli /tmp/artifacts/aesophia_cli-${CIRCLE_SHA1:?}
-            chmod +x /tmp/artifacts/aesophia_cli-${CIRCLE_SHA1:?}
       - store_artifacts:
           path: /tmp/artifacts
           destination: /
