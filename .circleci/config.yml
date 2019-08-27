@@ -22,17 +22,17 @@ jobs:
           name: Test
           command: ./test/test_cli.sh
       - run:
-          name: Prepare build artifacts
+          name: Prepare workspace artifacts
           command: |
-            mkdir /tmp/artifacts
-            cp aesophia_cli /tmp/artifacts/aesophia_cli-${CIRCLE_SHA1:?}
+            mkdir -p /tmp/artifacts
+            cp aesophia_cli /tmp/artifacts/aesophia_cli
       - persist_to_workspace:
           root: /tmp/artifacts
           paths: ["*"]
       - run:
-          name: Remove non-versioned binary
+          name: Prepare build artifacts to publish
           command: |
-            rm /tmp/artifacts/aesophia_cli-${CIRCLE_SHA1:?}
+            mv /tmp/artifacts/aesophia_cli /tmp/artifacts/aesophia_cli-${CIRCLE_SHA1:?}
       - store_artifacts:
           path: /tmp/artifacts
           destination: /
