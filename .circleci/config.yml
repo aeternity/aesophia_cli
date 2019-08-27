@@ -47,23 +47,20 @@ jobs:
           command: |
             /infrastructure/scripts/upload-github-release-assets.sh github_api_token=${GITHUB_API_TOKEN:?} \
             owner=${CIRCLE_PROJECT_USERNAME:?} repo=${CIRCLE_PROJECT_REPONAME:?} \
-            tag=v4.0.0-test ASSETS=/tmp/artifacts/*
+            tag=${CIRCLE_TAG:?} ASSETS=/tmp/artifacts/*
 
 workflows:
   version: 2
   commit:
     jobs:
-      - build:
-          filters:
-            branches:
-              ignore: /.*/
+      - build
 
   release:
     jobs:
       - build:
           filters:
-            # branches:
-            #   ignore: /.*/
+            branches:
+              ignore: /.*/
             tags:
               only: /^v.*$/
       - deploy_github:
@@ -71,7 +68,7 @@ workflows:
           requires:
             - build
           filters:
-            # branches:
-            #   ignore: /.*/
+            branches:
+              ignore: /.*/
             tags:
               only: /^v.*$/
