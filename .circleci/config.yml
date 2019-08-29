@@ -1,0 +1,74 @@
+version: 2.1
+
+executors:
+  aebuilder:
+    docker:
+      - image: aeternity/builder
+        user: builder
+    working_directory: ~/aesophia
+  aerelease:
+    docker:
+      - image: aeternity/infrastructure:stable
+
+jobs:
+  build:
+    executor: aebuilder
+    steps:
+      - checkout
+      - run:
+          name: Build
+          command: ./rebar3 escriptize
+      - run:
+          name: Test
+          command: ./test/test_cli.sh
+      - run:
+          name: Prepare workspace artifacts
+          command: |
+            mkdir -p /tmp/artifacts
+            cp aesophia_cli /tmp/artifacts/aesophia_cli
+      - persist_to_workspace:
+          root: /tmp/artifacts
+          paths: ["*"]
+      - run:
+          name: Prepare build artifacts to publish
+          command: |
+            mv /tmp/artifacts/aesophia_cli /tmp/artifacts/aesophia_cli-${CIRCLE_SHA1:?}
+      - store_artifacts:
+          path: /tmp/artifacts
+          destination: /
+
+  deploy_github:
+    executor: aerelease
+    steps:
+      - attach_workspace:
+          at: /tmp/artifacts
+      - run:
+          name: Upload binary artifacts to GitHub
+          command: |
+            /infrastructure/scripts/upload-github-release-assets.sh github_api_token=${GITHUB_API_TOKEN:?} \
+            owner=${CIRCLE_PROJECT_USERNAME:?} repo=${CIRCLE_PROJECT_REPONAME:?} \
+            tag=${CIRCLE_TAG:?} ASSETS=/tmp/artifacts/*
+
+workflows:
+  version: 2
+  commit:
+    jobs:
+      - build
+
+  release:
+    jobs:
+      - build:
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /^v.*$/
+      - deploy_github:
+          context: ae-library
+          requires:
+            - build
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /^v.*$/
