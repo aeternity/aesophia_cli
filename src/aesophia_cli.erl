@@ -106,25 +106,19 @@ compile(File, Opts) ->
     Backend = get_backend(Opts),
     Verbose = get_verbose(Opts),
 
-    try aeso_compiler:file(File, Verbose ++ IncludePath ++ Backend) of
+    case aeso_compiler:file(File, Verbose ++ IncludePath ++ Backend) of
         {ok, Map} ->
             write_bytecode(OutFile, Map);
-        {error, Reason} ->
-            io:format("Error:\n~s\n\n", [Reason]),
-            {error, Reason}
-    catch
-        error:Error ->
-            Where = hd(erlang:get_stacktrace()),
-            ErrorString = io_lib:format("Error: ~p in\n   ~p", [Error, Where]),
-            io:format("~s\n", [ErrorString]),
-            {error, list_to_binary(lists:flatten(ErrorString))}
+        {error, Reasons} ->
+            [io:format("~s\n", [aeso_errors:pp(Reason)]) || Reason <- Reasons],
+            {error, Reasons}
     end.
 
 create_aci(Type, ContractFile, Opts) ->
     OutFile = proplists:get_value(outfile, Opts, undefined),
     IncPath = get_inc_path(Opts),
     Verbose = get_verbose(Opts),
-    try aeso_aci:file(json, ContractFile, Verbose ++ IncPath) of
+    case aeso_aci:file(json, ContractFile, Verbose ++ IncPath) of
         {ok, Enc} ->
             io:format("ACI generated successfully!\n\n"),
             case Type of
@@ -134,12 +128,9 @@ create_aci(Type, ContractFile, Opts) ->
                     {ok, Stub} = aeso_aci:render_aci_json(Enc),
                     write_aci(OutFile, io_lib:format("~s\n", [Stub]))
             end;
-        {error, Reason} ->
-            io:format("Error: Failed to create ACI - ~s\n", [Reason]),
-            {error, Reason}
-    catch _:Reason ->
-        io:format("Error: Failed to create ACI - ~p\n", [Reason]),
-        {error, Reason}
+        {error, Reasons} ->
+            [io:format("~s\n", [aeso_errors:pp(Reason)]) || Reason <- Reasons],
+            {error, Reasons}
     end.
 
 create_calldata(ContractFile, Opts) ->
@@ -163,28 +154,24 @@ create_calldata_(Contract, Opts, COpts) ->
             case prepare_args(Args0) of
                 {ok, Args} ->
                     create_calldata(Contract, Fun, Args, Opts, COpts);
-                error ->
+                {error, Reasons} ->
                     io:format("Error: could not parse the arguments, "
-                              "they should be one string with comma separated literals.\n")
+                              "they should be one string with comma separated literals.\n"),
+                    [io:format("~s\n", [aeso_errors:pp(Reason)]) || Reason <- Reasons],
+                    {error, Reasons}
             end
     end.
 
 create_calldata(Contract, CallFun, CallArgs, Opts, COpts) ->
     OutFile = proplists:get_value(outfile, Opts, undefined),
     Backend = get_backend(Opts),
-    try
-        case aeso_compiler:create_calldata(Contract, CallFun, CallArgs, COpts ++ Backend) of
-            {ok, CallData} ->
-                write_calldata(OutFile, CallData);
-            Err = {error, Reason} ->
-                io:format("Error: Create calldata failed:\n~s\n", [Reason]),
-                Err
-        end
-    catch error:Error ->
-        Where = hd(erlang:get_stacktrace()),
-        ErrorString = io_lib:format("Error: ~p in\n   ~p", [Error, Where]),
-        io:format("~s\n", [ErrorString]),
-        {error, list_to_binary(lists:flatten(ErrorString))}
+
+    case aeso_compiler:create_calldata(Contract, CallFun, CallArgs, COpts ++ Backend) of
+        {ok, CallData} ->
+            write_calldata(OutFile, CallData);
+        {error, Reasons} ->
+            [io:format("~s\n", [aeso_errors:pp(Reason)]) || Reason <- Reasons],
+            {error, Reasons}
     end.
 
 decode_call_res(EncValue, Opts) ->
@@ -223,9 +210,9 @@ decode_call_res(Source, FunName, CallRes0, CallValue, COpts) ->
     case aeso_compiler:to_sophia_value(Source, FunName, CallRes, CallValue, COpts) of
         {ok, Ast} ->
             io:format("Decoded call result:\n~s\n", [prettypr:format(aeso_pretty:expr(Ast))]);
-        Err = {error, Reason} ->
-            io:format("Error: Failed to decode call result - ~p\n", [Reason]),
-            Err
+        {error, Reasons} ->
+            [io:format("~s\n", [aeso_errors:pp(Reason)]) || Reason <- Reasons],
+            {error, Reasons}
     end.
 
 decode_data(EncData, Opts) ->
@@ -304,14 +291,14 @@ write_aci(OutFile, ACI) ->
 prepare_args("") ->
     {ok, []};
 prepare_args(ArgsStr) ->
-    case aeso_parser:string("contract C =\n  function foo() = (" ++ ArgsStr ++ ")") of
-        {ok, [{contract, _, _, [{letfun, _, _, _, _, Args}]}]} ->
+    try aeso_parser:string("contract C =\n  function foo() = (" ++ ArgsStr ++ ")") of
+        [{contract, _, _, [{letfun, _, _, _, _, Args}]}] ->
             case Args of
                 {tuple, _, Args1} -> {ok, [prepare_arg(Arg) || Arg <- Args1]};
                 _                 -> {ok, [prepare_arg(Args)]}
-            end;
-        _ ->
-            error
+            end
+    catch throw:{error, Reasons} ->
+        {error, Reasons}
     end.
 
 prepare_arg({string, _, <<>>}) -> "\"\"";
