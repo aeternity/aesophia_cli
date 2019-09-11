@@ -29,6 +29,7 @@
     , {backend, $b, "backend", {string, "fate"}, "Compiler backend; fate | aevm"}
     , {outfile, $o, "out", string, "Output the result to file"}
     , {verbose, $v, "verbose", undefined, "Verbose output"}
+    , {pp_asm,  undefined, "pp_asm", undefined, "Pretty print assembler code after compilation"}
     , {version, undefined, "version", undefined, "Sophia compiler version"}]).
 
 usage() ->
@@ -105,8 +106,9 @@ compile(File, Opts) ->
     IncludePath = get_inc_path(Opts),
     Backend = get_backend(Opts),
     Verbose = get_verbose(Opts),
+    PPAsm   = get_pp_asm(Opts),
 
-    case aeso_compiler:file(File, Verbose ++ IncludePath ++ Backend) of
+    case aeso_compiler:file(File, Verbose ++ IncludePath ++ Backend ++ PPAsm) of
         {ok, Map} ->
             write_bytecode(OutFile, Map);
         {error, Reasons} ->
@@ -323,4 +325,10 @@ get_backend(Opts) ->
     case proplists:get_value(backend, Opts, "fate") of
         "aevm" -> [{backend, aevm}];
         _fate  -> [{backend, fate}]
+    end.
+
+get_pp_asm(Opts) ->
+    case proplists:get_value(pp_asm, Opts, false) of
+        false -> [];
+        true  -> [pp_assembler]
     end.
