@@ -30,6 +30,7 @@
     , {outfile, $o, "out", string, "Output the result to file"}
     , {verbose, $v, "verbose", undefined, "Verbose output"}
     , {pp_asm,  undefined, "pp_asm", undefined, "Pretty print assembler code after compilation"}
+    , {pp_size, undefined, "pp_size", undefined, "Print the size of the compiled byte code"}
     , {version, undefined, "version", undefined, "Sophia compiler version"}]).
 
 usage() ->
@@ -110,7 +111,7 @@ compile(File, Opts) ->
 
     case aeso_compiler:file(File, Verbose ++ IncludePath ++ Backend ++ PPAsm) of
         {ok, Map} ->
-            write_bytecode(OutFile, Map);
+            write_bytecode(OutFile, Map, Opts);
         {error, Reasons} ->
             [io:format("~s\n", [aeso_errors:pp(Reason)]) || Reason <- Reasons],
             {error, Reasons}
@@ -269,10 +270,12 @@ write_calldata(OutFile, CallData) ->
             file:write_file(OutFile, EncCallData)
     end.
 
-write_bytecode(OutFile, CompileMap = #{ contract_source := SourceStr }) ->
+write_bytecode(OutFile, CompileMap = #{ contract_source := SourceStr }, Opts) ->
     %% eblake2 is slow - but NIFs don't work in escript (easily...)
     {ok, SourceHash} = eblake2:blake2b(32, list_to_binary(SourceStr)),
     SerByteCode = aeser_contract_code:serialize(CompileMap#{ source_hash => SourceHash }),
+    [ io:format("Bytecode size: ~p\n", [byte_size(SerByteCode)])
+      || proplists:get_value(pp_size, Opts, false) ],
     ByteCode = aeser_api_encoder:encode(contract_bytearray, SerByteCode),
     case OutFile of
         undefined ->
