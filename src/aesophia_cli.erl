@@ -123,7 +123,6 @@ create_aci(Type, ContractFile, Opts) ->
     Verbose = get_verbose(Opts),
     case aeso_aci:file(json, ContractFile, Verbose ++ IncPath) of
         {ok, Enc} ->
-            io:format("ACI generated successfully!\n\n"),
             case Type of
                 json ->
                     write_aci(OutFile, io_lib:format("~s\n", [jsx:encode(Enc)]));
