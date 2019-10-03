@@ -303,7 +303,9 @@ prepare_call(Call) ->
     end.
 
 prepare_arg({string, _, <<>>}) -> "\"\"";
-prepare_arg(Arg)               -> prettypr:format(aeso_pretty:expr(Arg)).
+prepare_arg(Arg)               -> no_nl(prettypr:format(aeso_pretty:expr(Arg))).
+
+no_nl(Str) -> lists:flatten(string:replace(Str, "\n", "", all)).
 
 get_inc_path(File, Opts) ->
     aeso_compiler:add_include_path(File, get_inc_path(Opts)).
