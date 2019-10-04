@@ -71,7 +71,7 @@ else
 fi
 
 ## Create calldata
-./aesophia_cli --create_calldata test/contracts/identity.aes --calldata_fun main --calldata_args "42" -o ${TMPFILE}.calldata1
+./aesophia_cli --create_calldata test/contracts/identity.aes --call "main(42)" -o ${TMPFILE}.calldata1
 if [ ! -f ${TMPFILE}.calldata1 ]; then
     echo -e "Test FAILED: create calldata 1\\n"
     STATUS=1
@@ -80,7 +80,7 @@ else
 fi
 
 ## Create calldata
-./aesophia_cli --create_calldata test/contracts/identity.aes --calldata_fun init --calldata_args "" -o ${TMPFILE}.calldata2
+./aesophia_cli --create_calldata test/contracts/identity.aes --call "init()" -o ${TMPFILE}.calldata2
 if [ ! -f ${TMPFILE}.calldata2 ]; then
     echo -e "Test FAILED: create calldata 2\\n"
     STATUS=1
@@ -89,7 +89,7 @@ else
 fi
 
 ## Create calldata
-./aesophia_cli --create_calldata test/contracts/include.aes --calldata_fun foo --calldata_args "" -o ${TMPFILE}.calldata3
+./aesophia_cli --create_calldata test/contracts/include.aes --call "foo()" -o ${TMPFILE}.calldata3
 if [ ! -f ${TMPFILE}.calldata3 ]; then
     echo -e "Test FAILED: create calldata 3\\n"
     STATUS=1

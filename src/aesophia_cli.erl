@@ -11,10 +11,8 @@
         "Create ACI stub-contract"}
     , {create_calldata, undefined, "create_calldata", string,
         "Create calldata with respect to (stub-)contract in this file"}
-    , {create_calldata_fun, undefined, "calldata_fun", string,
-        "Calldata creation - name of function"}
-    , {create_calldata_args, undefined, "calldata_args", string,
-        "Calldata creation - function arguments, e.g. \"42, true, [1, 3, 7]\""}
+    , {create_calldata_call, undefined, "call", string,
+        "Calldata creation - the call, e.g. \"foo(42, true)\""}
     , {decode_data, undefined, "decode_data", string,
         "Decode contract call result, input is a contract bytearray (cb_...)"}
     , {decode_data_type, undefined, "decode_type", string,
@@ -48,7 +46,7 @@ usage() ->
               "[create aci JSON] : \n"
               "  aesophia_cli --create_json_aci identity.aes -o identity.json\n"
               "[create calldata] :\n"
-              "  aesophia_cli --create_calldata identity.aes --calldata_fun main --calldata_args 42\n"
+              "  aesophia_cli --create_calldata identity.aes --call \"main(42)\"\n"
               "[decode call result] : \n"
               "  aesophia_cli identity.aes -b aevm --call_result cb_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACr8s/aY --call_result_fun main\n"
               "[decode data] :\n"
@@ -146,16 +144,15 @@ create_calldata(ContractFile, Opts) ->
     end.
 
 create_calldata_(Contract, Opts, COpts) ->
-    case {proplists:get_value(create_calldata_fun, Opts, undefined),
-          proplists:get_value(create_calldata_args, Opts, undefined)} of
-        {undefined, _} ->
-            io:format("Error: not enough create call data input\n\n"), usage();
-        {_, undefined} ->
-            io:format("Error: not enough create call data input\n\n"), usage();
-        {Fun, Args0} ->
-            case prepare_args(Args0) of
-                {ok, Args} ->
+    case proplists:get_value(create_calldata_call, Opts, undefined) of
+        undefined ->
+            io:format("Error: missing 'call' parameter for calldata creation\n\n"), usage();
+        Call ->
+            case prepare_call(Call) of
+                {ok, Fun, Args} ->
                     create_calldata(Contract, Fun, Args, Opts, COpts);
+                {error, Reason} when is_atom(Reason) ->
+                    {error, Reason};
                 {error, Reasons} ->
                     io:format("Error: could not parse the arguments, "
                               "they should be one string with comma separated literals.\n"),
@@ -292,21 +289,23 @@ write_aci(OutFile, ACI) ->
     file:write_file(OutFile, ACI).
 
 %% Maybe better to do on the compiler side...
-prepare_args("") ->
-    {ok, []};
-prepare_args(ArgsStr) ->
-    try aeso_parser:string("contract C =\n  function foo() = (" ++ ArgsStr ++ ")") of
-        [{contract, _, _, [{letfun, _, _, _, _, Args}]}] ->
-            case Args of
-                {tuple, _, Args1} -> {ok, [prepare_arg(Arg) || Arg <- Args1]};
-                _                 -> {ok, [prepare_arg(Args)]}
-            end
+prepare_call(Call) ->
+    try aeso_parser:string("contract C =\n function foo() = " ++ Call) of
+        [{contract, _, _, [{letfun, _, _, _, _, {app, _, Fun0, Args0}}]}] ->
+            {id, _, Fun} = Fun0,
+            Args = [prepare_arg(Arg) || Arg <- Args0],
+            {ok, Fun, Args};
+        _ ->
+            io:format("Bad 'call' - it should be \"fun(arg1, arg2, ...)\"\n"),
+            {error, input_error}
     catch throw:{error, Reasons} ->
         {error, Reasons}
     end.
 
 prepare_arg({string, _, <<>>}) -> "\"\"";
-prepare_arg(Arg)               -> prettypr:format(aeso_pretty:expr(Arg)).
+prepare_arg(Arg)               -> no_nl(prettypr:format(aeso_pretty:expr(Arg))).
+
+no_nl(Str) -> lists:flatten(string:replace(Str, "\n", "", all)).
 
 get_inc_path(File, Opts) ->
     aeso_compiler:add_include_path(File, get_inc_path(Opts)).
