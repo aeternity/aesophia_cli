@@ -25,6 +25,8 @@
         "Decode contract call result - function name"}
     , {include_path, $i, "include_path", string, "Explicit include path"}
     , {backend, $b, "backend", {string, "fate"}, "Compiler backend; fate | aevm"}
+    , {to_validate, undefined, "validate", string,
+        "Verify that a contract bytearray (cb_...) is the result of compiling the given source code"}
     , {outfile, $o, "out", string, "Output the result to file"}
     , {verbose, $v, "verbose", undefined, "Verbose output"}
     , {pp_asm,  undefined, "pp_asm", undefined, "Pretty print assembler code after compilation"}
@@ -50,9 +52,16 @@ usage() ->
               "[decode call result] : \n"
               "  aesophia_cli identity.aes -b aevm --call_result cb_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACr8s/aY --call_result_fun main\n"
               "[decode data] :\n"
-              "  aesophia_cli -b aevm --decode_data cb_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACr8s/aY --decode_type int\n\n").
+              "  aesophia_cli -b aevm --decode_data cb_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACr8s/aY --decode_type int\n\n"),
+    error.
 
 main(Args) ->
+    case main1(Args) of
+        ok -> ok;
+        _  -> erlang:halt(1)
+    end.
+
+main1(Args) ->
     case getopt:parse(?OPT_SPEC, Args) of
         {ok, {Opts, []}} ->
             IsHelp         = proplists:get_value(help, Opts, false),
@@ -62,6 +71,7 @@ main(Args) ->
             DecodeCall     = proplists:get_value(decode_call_val, Opts, undefined),
             CreateACIJSON  = proplists:get_value(create_json_aci, Opts, undefined),
             CreateACIStub  = proplists:get_value(create_stub_aci, Opts, undefined),
+            Validate       = proplists:get_value(to_validate, Opts, undefined),
             if  IsHelp ->
                     usage();
                 CreateCallData /= undefined ->
@@ -74,6 +84,8 @@ main(Args) ->
                     create_aci(json, CreateACIJSON, Opts);
                 CreateACIStub /= undefined ->
                     create_aci(stub, CreateACIStub, Opts);
+                Validate /= undefined ->
+                    validate(Validate, Opts);
                 IsVersion ->
                     {ok, Vsn} = aeso_compiler:version(),
                     io:format("Sophia compiler version ~s\n", [Vsn]);
@@ -90,30 +102,51 @@ main(Args) ->
             usage()
     end.
 
-
-compile(Opts) ->
+with_input_file(Opts, Fun) ->
     case proplists:get_value(src_file, Opts, undefined) of
         undefined ->
             io:format("Error: no input source file\n\n"),
             usage();
         File ->
-            compile(File, Opts)
+            Fun(File)
     end.
+
+compile(Opts) ->
+    with_input_file(Opts, fun(File) -> compile(File, Opts) end).
 
 compile(File, Opts) ->
     OutFile = proplists:get_value(outfile, Opts, undefined),
-    IncludePath = get_inc_path(Opts),
-    Backend = get_backend(Opts),
-    Verbose = get_verbose(Opts),
-    PPAsm   = get_pp_asm(Opts),
-
-    case aeso_compiler:file(File, Verbose ++ IncludePath ++ Backend ++ PPAsm) of
+    case aeso_compiler:file(File, get_compiler_opts(Opts)) of
         {ok, Map} ->
             write_bytecode(OutFile, Map, Opts);
         {error, Reasons} ->
             [io:format("~s\n", [aeso_errors:pp(Reason)]) || Reason <- Reasons],
             {error, Reasons}
     end.
+
+validate(ByteCode, Opts) ->
+    with_input_file(Opts, fun(File) ->
+        case file:read_file(File) of
+            {error, Error} ->
+                Msg = lists:flatten([File,": ",file:format_error(Error)]),
+                io:format("~s\n", [aeso_errors:pp(aeso_errors:new(file_error, Msg))]);
+            {ok, Src} ->
+                COpts = get_compiler_opts(Opts),
+                case aeser_api_encoder:decode(list_to_binary(ByteCode)) of
+                    {contract_bytearray, Bin} ->
+                        Map = aeser_contract_code:deserialize(Bin),
+                        case aeso_compiler:validate_byte_code(Map, binary_to_list(Src), COpts) of
+                            ok ->
+                                io:format("Validation successful.\n");
+                            {error, Reasons} ->
+                                [io:format("~s", [aeso_errors:pp(Reason)]) || Reason <- Reasons],
+                                {error, Reasons}
+                        end;
+                    Err ->
+                        io:format("~p\n", [Err])
+                end
+        end
+    end).
 
 create_aci(Type, ContractFile, Opts) ->
     OutFile = proplists:get_value(outfile, Opts, undefined),
@@ -306,6 +339,13 @@ prepare_arg({string, _, <<>>}) -> "\"\"";
 prepare_arg(Arg)               -> no_nl(prettypr:format(aeso_pretty:expr(Arg))).
 
 no_nl(Str) -> lists:flatten(string:replace(Str, "\n", "", all)).
+
+get_compiler_opts(Opts) ->
+    IncludePath = get_inc_path(Opts),
+    Backend = get_backend(Opts),
+    Verbose = get_verbose(Opts),
+    PPAsm   = get_pp_asm(Opts),
+    Verbose ++ IncludePath ++ Backend ++ PPAsm.
 
 get_inc_path(File, Opts) ->
     aeso_compiler:add_include_path(File, get_inc_path(Opts)).
