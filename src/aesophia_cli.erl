@@ -27,6 +27,7 @@
     , {backend, $b, "backend", {string, "fate"}, "Compiler backend; fate | aevm"}
     , {to_validate, undefined, "validate", string,
         "Verify that a contract bytearray (cb_...) is the result of compiling the given source code"}
+    , {compiled_by, undefined, "compiled_by", string, "Extract compiler version from file (.aeb) or bytearray (cb_...)"}
     , {outfile, $o, "out", string, "Output the result to file"}
     , {verbose, $v, "verbose", undefined, "Verbose output"}
     , {pp_asm,  undefined, "pp_asm", undefined, "Pretty print assembler code after compilation"}
@@ -43,6 +44,8 @@ usage() ->
               "  aesophia_cli identity.aes -b aevm -o identity.aeb\n"
               "[compile with explicit include path] :\n"
               "  aesophia_cli identity.aes -i /path/to/include/ -o identity.aeb\n"
+              "[extract aesophia compiler version] :\n"
+              "  aesophia_cli --compiled_by cb_+GZGA6CpNW171TSU...MAANEx2r\n"
               "[create aci stub] : \n"
               "  aesophia_cli --create_stub_aci identity.aes\n"
               "[create aci JSON] : \n"
@@ -71,6 +74,7 @@ main1(Args) ->
             DecodeCall     = proplists:get_value(decode_call_val, Opts, undefined),
             CreateACIJSON  = proplists:get_value(create_json_aci, Opts, undefined),
             CreateACIStub  = proplists:get_value(create_stub_aci, Opts, undefined),
+            CompiledBy     = proplists:get_value(compiled_by, Opts, undefined),
             Validate       = proplists:get_value(to_validate, Opts, undefined),
             if  IsHelp ->
                     usage();
@@ -84,6 +88,8 @@ main1(Args) ->
                     create_aci(json, CreateACIJSON, Opts);
                 CreateACIStub /= undefined ->
                     create_aci(stub, CreateACIStub, Opts);
+                CompiledBy /= undefined ->
+                    compiled_by(CompiledBy, Opts);
                 Validate /= undefined ->
                     validate(Validate, Opts);
                 IsVersion ->
@@ -147,6 +153,27 @@ validate(ByteCode, Opts) ->
                 end
         end
     end).
+
+compiled_by(Input0, _Opts) ->
+    %% Don't try to be clever first see if it is a file...
+    Input = case file:read_file(Input0) of
+                {ok, BinInput} -> BinInput;
+                {error, _}     -> list_to_binary(Input0)
+            end,
+    case aeser_api_encoder:safe_decode(contract_bytearray, Input) of
+        {ok, Bin} -> compiled_by(Bin);
+        {error, _} ->
+            io:format("ERROR: Input is neither a file or a contract bytearray (cb_...)\n")
+    end.
+
+compiled_by(Bin) ->
+    try
+        Map = aeser_contract_code:deserialize(Bin),
+        CVer = maps:get(compiler_version, Map, undefined),
+        io:format("~s\n", [CVer])
+    catch _:_ ->
+        io:format("ERROR: Could not deserialize contract binary\n")
+    end.
 
 create_aci(Type, ContractFile, Opts) ->
     OutFile = proplists:get_value(outfile, Opts, undefined),
