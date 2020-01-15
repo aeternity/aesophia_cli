@@ -6,9 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+### Changed
+### Removed
+
+## [4.2.0] - 2020-01-15
+### Added
 - Added option `--compiled_by` to extract the compiler version from either a file or a
   contract byte array.
 ### Changed
+- Updated to [Sophia 4.2.0](https://github.com/aeternity/aesophia/blob/master/CHANGELOG.md#420---2020-01-15)
 ### Removed
 
 ## [4.1.0] - 2019-11-26
