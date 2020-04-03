@@ -32,6 +32,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 [Unreleased]: https://github.com/aeternity/aesophia_cli/compare/v4.3.0...HEAD
-[4.2.1]: https://github.com/aeternity/aesophia_cli/compare/v4.2.0...v4.3.0
+[4.3.0]: https://github.com/aeternity/aesophia_cli/compare/v4.2.0...v4.3.0
 [4.2.0]: https://github.com/aeternity/aesophia_cli/compare/v4.1.0...v4.2.0
 [4.1.0]: https://github.com/aeternity/aesophia_cli/releases/tag/v4.1.0
