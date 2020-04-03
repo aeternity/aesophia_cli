@@ -31,7 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix bug with standard library includes.
 ### Removed
 
-[Unreleased]: https://github.com/aeternity/aesophia_http/compare/v4.3.0...HEAD
-[4.2.1]: https://github.com/aeternity/aesophia_http/compare/v4.2.0...v4.3.0
-[4.2.0]: https://github.com/aeternity/aesophia_http/compare/v4.1.0...v4.2.0
-[4.1.0]: https://github.com/aeternity/aesophia_http/releases/tag/v4.1.0
+[Unreleased]: https://github.com/aeternity/aesophia_cli/compare/v4.3.0...HEAD
+[4.2.1]: https://github.com/aeternity/aesophia_cli/compare/v4.2.0...v4.3.0
+[4.2.0]: https://github.com/aeternity/aesophia_cli/compare/v4.1.0...v4.2.0
+[4.1.0]: https://github.com/aeternity/aesophia_cli/releases/tag/v4.1.0
