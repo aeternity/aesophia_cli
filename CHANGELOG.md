@@ -12,7 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [4.3.1] - 2020-04-21
 ### Added
 ### Changed
-- Fixed included compiler binary file, which was broken due to incorrect local system dependencies
+- Fixed included compiler binary file, which was broken due to incorrect local system dependencies.
+  Because the aesophia version hasn't changed, the compiler in this release
+  continues to report as `v4.3.0`.
 ### Removed
 
 ## [4.3.0] - 2020-04-02
