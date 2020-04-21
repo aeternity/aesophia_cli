@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 ### Removed
 
+## [4.3.1] - 2020-04-21
+### Added
+### Changed
+- Fixed included compiler binary file, which was broken due to incorrect local system dependencies.
+  Because the aesophia version hasn't changed, the compiler in this release
+  continues to report as `v4.3.0`.
+### Removed
+
 ## [4.3.0] - 2020-04-02
 ### Added
 ### Changed
@@ -31,7 +39,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix bug with standard library includes.
 ### Removed
 
-[Unreleased]: https://github.com/aeternity/aesophia_cli/compare/v4.3.0...HEAD
+[Unreleased]: https://github.com/aeternity/aesophia_cli/compare/v4.3.1...HEAD
+[4.3.1]: https://github.com/aeternity/aesophia_cli/compare/v4.3.0...v4.3.1
 [4.3.0]: https://github.com/aeternity/aesophia_cli/compare/v4.2.0...v4.3.0
 [4.2.0]: https://github.com/aeternity/aesophia_cli/compare/v4.1.0...v4.2.0
 [4.1.0]: https://github.com/aeternity/aesophia_cli/releases/tag/v4.1.0
