@@ -51,9 +51,9 @@ usage() ->
               "[create aci JSON] : \n"
               "  aesophia_cli --create_json_aci identity.aes -o identity.json\n"
               "[create calldata] :\n"
-              "  aesophia_cli --create_calldata identity.aes --call \"main(42)\"\n"
+              "  aesophia_cli --create_calldata identity.aes --call \"id(42)\"\n"
               "[decode call result] : \n"
-              "  aesophia_cli identity.aes -b aevm --call_result cb_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACr8s/aY --call_result_fun main\n"
+              "  aesophia_cli identity.aes -b aevm --call_result cb_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACr8s/aY --call_result_fun id\n"
               "[decode data] :\n"
               "  aesophia_cli -b aevm --decode_data cb_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACr8s/aY --decode_type int\n\n"),
     error.
@@ -350,8 +350,8 @@ write_aci(OutFile, ACI) ->
 
 %% Maybe better to do on the compiler side...
 prepare_call(Call) ->
-    try aeso_parser:string("contract C =\n function foo() = " ++ Call) of
-        [{contract, _, _, [{letfun, _, _, _, _, {app, _, Fun0, Args0}}]}] ->
+    try aeso_parser:string("main contract C =\n function foo() = " ++ Call) of
+        [{contract_main, _, _, [{letfun, _, _, _, _, {app, _, Fun0, Args0}}]}] ->
             {id, _, Fun} = Fun0,
             Args = [prepare_arg(Arg) || Arg <- Args0],
             {ok, Fun, Args};

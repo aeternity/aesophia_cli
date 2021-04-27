@@ -1,5 +1,5 @@
 include "included.aes"
 
-contract Include =
+main contract Include =
   entrypoint foo() =
     Included.foo() < 43
