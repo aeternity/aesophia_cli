@@ -67,7 +67,12 @@ workflows:
 
   release:
     jobs:
-      - verify_rebar_lock
+      - verify_rebar_lock:
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /^v.*$/
       - build:
           filters:
             branches:
