@@ -71,7 +71,7 @@ else
 fi
 
 ## Create calldata
-./aesophia_cli --create_calldata test/contracts/identity.aes --call "main(42)" -o ${TMPFILE}.calldata1
+./aesophia_cli --create_calldata test/contracts/identity.aes --call "main_(42)" -o ${TMPFILE}.calldata1
 if [ ! -f ${TMPFILE}.calldata1 ]; then
     echo -e "Test FAILED: create calldata 1\\n"
     STATUS=1
@@ -109,7 +109,7 @@ else
 fi
 
 ## Decode data
-RES=`./aesophia_cli -b aevm test/contracts/identity.aes --call_result cb_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACr8s/aY --call_result_fun main`
+RES=`./aesophia_cli -b aevm test/contracts/identity.aes --call_result cb_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACr8s/aY --call_result_fun main_`
 echo -e "${RES}"
 RES=`echo "${RES}" | tail -n1`
 if [ "${RES}" != "42" ]; then
