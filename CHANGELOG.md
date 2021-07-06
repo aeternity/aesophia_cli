@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 ### Removed
 
+## [6.0.2]
+### Added
+### Changed
+- Updated to [Sophia 6.0.2](https://github.com/aeternity/aesophia/blob/master/CHANGELOG.md#602)
+### Removed
+
 ## [6.0.1]
 ### Added
 ### Changed
@@ -57,7 +63,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix bug with standard library includes.
 ### Removed
 
-[Unreleased]: https://github.com/aeternity/aesophia_cli/compare/v6.0.1...HEAD
+[Unreleased]: https://github.com/aeternity/aesophia_cli/compare/v6.0.2...HEAD
+[6.0.2]: https://github.com/aeternity/aesophia_cli/compare/v6.0.1...v6.0.2
 [6.0.1]: https://github.com/aeternity/aesophia_cli/compare/v6.0.0...v6.0.1
 [6.0.0]: https://github.com/aeternity/aesophia_cli/compare/v5.0.0...v6.0.0
 [5.0.0]: https://github.com/aeternity/aesophia_cli/compare/v4.3.1...v5.0.0
