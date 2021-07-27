@@ -3,6 +3,11 @@ aesophia_cli
 
 A simple command line interface for the [Sophia compiler](https://github.com/aeternity/aesophia).
 
+Requirements
+------------
+
+- Erlang/OTP 22
+
 Build
 -----
 
