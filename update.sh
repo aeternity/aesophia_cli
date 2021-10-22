@@ -8,5 +8,5 @@ sed -i "s#{vsn, \".*\"}#{vsn, \"$sophia_vsn\"}#g" src/aesophia_cli.app.src
 ./rebar3 escriptize
 mkdir priv/bin/v$sophia_vsn
 cp aesophia_cli priv/bin/v$sophia_vsn/
-test/test_cli.sh && echo -e "\e[1mDone! Remember to update CHANGELOG.md\e[0m"
+test/test_cli.sh && echo -e "\e[1;32mDone! Remember to update CHANGELOG.md\e[0m" || echo -e "\e[1;31mSome tests have failed\e[0m"
 
