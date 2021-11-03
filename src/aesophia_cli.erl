@@ -350,7 +350,7 @@ write_aci(OutFile, ACI) ->
 
 %% Maybe better to do on the compiler side...
 prepare_call(Call) ->
-    try aeso_parser:string("main contract C =\n function foo() = " ++ Call) of
+    try aeso_parser:string("main contract C =\n function foo() = " ++ aeso_scan:utf8_encode(Call)) of
         [{contract_main, _, _, [{letfun, _, _, _, _, [{guarded, _, [], {app, _, Fun0, Args0}}]}]}] ->
             {id, _, Fun} = Fun0,
             Args = [prepare_arg(Arg) || Arg <- Args0],

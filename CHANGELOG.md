@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 ### Changed
+- Fixed a bug in calldata encoding - the input was not properly UTF8 encoded.
 ### Removed
 
 ## [6.1.0]
