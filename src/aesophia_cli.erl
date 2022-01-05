@@ -35,6 +35,7 @@
     , {verbose, $v, "verbose", undefined, "Verbose output"}
     , {pp_asm,  undefined, "pp_asm", undefined, "Pretty print assembler code after compilation"}
     , {pp_size, undefined, "pp_size", undefined, "Print the size of the compiled byte code"}
+    , {oneline_errors, undefined, "oneline_errors", undefined, "Print errors on one (long) line"}
     , {version, undefined, "version", undefined, "Sophia compiler version"}]).
 
 usage() ->
@@ -131,7 +132,7 @@ compile(File, Opts) ->
         {ok, Map} ->
             write_bytecode(OutFile, Map, Opts);
         {error, Reasons} ->
-            [io:format("~s\n", [aeso_errors:pp(Reason)]) || Reason <- Reasons],
+            pp_errors(Reasons, Opts),
             {error, Reasons}
     end.
 
@@ -150,7 +151,7 @@ validate(ByteCode, Opts) ->
                             ok ->
                                 io:format("Validation successful.\n");
                             {error, Reasons} ->
-                                [io:format("~s", [aeso_errors:pp(Reason)]) || Reason <- Reasons],
+                                pp_errors(Reasons, Opts),
                                 {error, Reasons}
                         end;
                     Err ->
@@ -194,7 +195,7 @@ create_aci(Type, ContractFile, Opts) ->
                     write_aci(OutFile, io_lib:format("~s\n", [Stub]))
             end;
         {error, Reasons} ->
-            [io:format("~s\n", [aeso_errors:pp(Reason)]) || Reason <- Reasons],
+            pp_errors(Reasons, Opts),
             {error, Reasons}
     end.
 
@@ -221,7 +222,7 @@ create_calldata_(Contract, Opts, COpts) ->
                 {error, Reasons} ->
                     io:format("Error: could not parse the arguments, "
                               "they should be one string with comma separated literals.\n"),
-                    [io:format("~s\n", [aeso_errors:pp(Reason)]) || Reason <- Reasons],
+                    pp_errors(Reasons, Opts),
                     {error, Reasons}
             end
     end.
@@ -234,7 +235,7 @@ create_calldata(Contract, CallFun, CallArgs, Opts, COpts) ->
         {ok, CallData} ->
             write_calldata(OutFile, CallData);
         {error, Reasons} ->
-            [io:format("~s\n", [aeso_errors:pp(Reason)]) || Reason <- Reasons],
+            pp_errors(Reasons, Opts),
             {error, Reasons}
     end.
 
@@ -262,20 +263,20 @@ decode_call_res(EncValue, Source, Opts, COpts) ->
         FunName ->
             case aeser_api_encoder:safe_decode(contract_bytearray, list_to_binary(EncValue)) of
                 {ok, CallValue} ->
-                    decode_call_res(Source, FunName, proplists:get_value(decode_call_res, Opts), CallValue, COpts);
+                    decode_call_res(Source, FunName, proplists:get_value(decode_call_res, Opts), CallValue, Opts, COpts);
                 {error, _} = Err ->
                     io:format("Error: Bad call result value\n"),
                     Err
             end
     end.
 
-decode_call_res(Source, FunName, CallRes0, CallValue, COpts) ->
+decode_call_res(Source, FunName, CallRes0, CallValue, Opts, COpts) ->
     CallRes = erlang:list_to_atom(CallRes0),
     case aeso_compiler:to_sophia_value(Source, FunName, CallRes, CallValue, COpts) of
         {ok, Ast} ->
             io:format("Decoded call result:\n~s\n", [prettypr:format(aeso_pretty:expr(Ast))]);
         {error, Reasons} ->
-            [io:format("~s\n", [aeso_errors:pp(Reason)]) || Reason <- Reasons],
+            pp_errors(Reasons, Opts),
             {error, Reasons}
     end.
 
@@ -436,4 +437,14 @@ get_warnings(Opts) ->
     case lists:member(error_warning, Opts) of
         true  -> Warnings ++ [warn_error];
         false -> Warnings
+    end.
+
+pp_errors(Reasons, Opts) ->
+    case proplists:get_value(oneline_errors, Opts, false) of
+        true  ->
+            Errors = lists:join("\n", [ aeso_errors:pp_oneline(R) || R <- Reasons ]),
+            io:format("~s\n", [Errors]);
+        false ->
+            Errors = lists:join("\n", [ aeso_errors:pp(R) || R <- Reasons ]),
+            io:format("~s", [Errors])
     end.

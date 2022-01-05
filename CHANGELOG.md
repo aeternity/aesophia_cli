@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- Option `--oneline_errors` for printing errors on one (long) line.
 ### Changed
 - Fixed a bug in calldata encoding - the input was not properly UTF8 encoded.
 ### Removed
