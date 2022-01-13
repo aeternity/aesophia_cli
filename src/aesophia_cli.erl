@@ -44,6 +44,8 @@ usage() ->
               "  aesophia_cli identity.aes -o identity.aeb\n"
               "[compile (for AEVM)] :\n"
               "  aesophia_cli identity.aes -b aevm -o identity.aeb\n"
+              "[compile (with unused functions and shadowing warnings enabled)] :\n"
+              "  aesophia_cli -wunused_functions -wshadowing identity.aes\n"
               "[compile with explicit include path] :\n"
               "  aesophia_cli identity.aes -i /path/to/include/ -o identity.aeb\n"
               "[extract aesophia compiler version] :\n"
