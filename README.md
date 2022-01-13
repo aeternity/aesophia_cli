@@ -19,6 +19,8 @@ EXAMPLES:
   aesophia_cli identity.aes -o identity.aeb
 [compile (for AEVM)] :
   aesophia_cli identity.aes -b aevm -o identity.aeb
+[compile (with unused functions and shadowing warnings enabled)] :
+  aesophia_cli -wunused_functions -wshadowing identity.aes
 [compile with explicit include path] :
   aesophia_cli identity.aes -i /path/to/include/ -o identity.aeb
 [create aci stub] :
