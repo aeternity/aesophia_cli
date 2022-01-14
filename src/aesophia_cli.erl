@@ -411,6 +411,7 @@ get_pp_asm(Opts) ->
 all_warnings() ->
     % New warnings should be added here after they're added to aesophia
     [ {"all", warn_all}
+    , {"error", warn_error}
     , {"unused_includes", warn_unused_includes}
     , {"unused_stateful", warn_unused_stateful}
     , {"unused_variables", warn_unused_variables}
