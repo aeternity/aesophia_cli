@@ -25,6 +25,9 @@
         "Decode contract call result - function name"}
     , {include_path, $i, "include_path", string, "Explicit include path"}
     , {backend, $b, "backend", {string, "fate"}, "Compiler backend; fate | aevm"}
+    , {no_warning, $w, "no_warning", string,
+        "Disabled warnings; " ++ string:join([W || {W, _} <- all_warnings()], " | ")}
+    , {error_warning, $e, "error_warning", undefined, "Report warnings as errors"}
     , {to_validate, undefined, "validate", string,
         "Verify that a contract bytearray (cb_...) is the result of compiling the given source code"}
     , {compiled_by, undefined, "compiled_by", string, "Extract compiler version from file (.aeb) or bytearray (cb_...)"}
@@ -42,6 +45,8 @@ usage() ->
               "  aesophia_cli identity.aes -o identity.aeb\n"
               "[compile (for AEVM)] :\n"
               "  aesophia_cli identity.aes -b aevm -o identity.aeb\n"
+              "[compile (with unused functions and shadowing warnings disabled)] :\n"
+              "  aesophia_cli -wunused_functions -wshadowing identity.aes\n"
               "[compile with explicit include path] :\n"
               "  aesophia_cli identity.aes -i /path/to/include/ -o identity.aeb\n"
               "[extract aesophia compiler version] :\n"
@@ -326,7 +331,9 @@ write_calldata(OutFile, CallData) ->
             file:write_file(OutFile, EncCallData)
     end.
 
-write_bytecode(OutFile, CompileMap = #{ contract_source := SourceStr }, Opts) ->
+write_bytecode(OutFile, CompileMap = #{ contract_source := SourceStr, warnings := Warnings }, Opts) ->
+    %% Print warnings first
+    [io:format("~s\n", [aeso_warnings:pp(Warn)]) || Warn <- Warnings],
     %% eblake2 is slow - but NIFs don't work in escript (easily...)
     {ok, SourceHash} = eblake2:blake2b(32, list_to_binary(SourceStr)),
     SerByteCode = aeser_contract_code:serialize(CompileMap#{ source_hash => SourceHash }),
@@ -369,10 +376,11 @@ no_nl(Str) -> lists:flatten(string:replace(Str, "\n", "", all)).
 
 get_compiler_opts(Opts) ->
     IncludePath = get_inc_path(Opts),
-    Backend = get_backend(Opts),
-    Verbose = get_verbose(Opts),
-    PPAsm   = get_pp_asm(Opts),
-    Verbose ++ IncludePath ++ Backend ++ PPAsm.
+    Backend     = get_backend(Opts),
+    Verbose     = get_verbose(Opts),
+    PPAsm       = get_pp_asm(Opts),
+    Warnings    = get_warnings(Opts),
+    Verbose ++ IncludePath ++ Backend ++ PPAsm ++ Warnings.
 
 get_inc_path(File, Opts) ->
     aeso_compiler:add_include_path(File, get_inc_path(Opts)).
@@ -399,4 +407,33 @@ get_pp_asm(Opts) ->
     case proplists:get_value(pp_asm, Opts, false) of
         false -> [];
         true  -> [pp_assembler]
+    end.
+
+all_warnings() ->
+    % New warnings should be added here after they're added to aesophia
+    [ {"all", warn_all}
+    , {"unused_includes", warn_unused_includes}
+    , {"unused_stateful", warn_unused_stateful}
+    , {"unused_variables", warn_unused_variables}
+    , {"unused_typedefs", warn_unused_typedefs}
+    , {"unused_return_value", warn_unused_return_value}
+    , {"unused_functions", warn_unused_functions}
+    , {"shadowing", warn_shadowing}
+    , {"division_by_zero", warn_division_by_zero}
+    , {"negative_spend", warn_negative_spend} ].
+
+get_warnings(Opts) ->
+    DisabledWarnings = [W || {no_warning, W} <- Opts],
+    Warnings = case DisabledWarnings of
+                   [] -> [warn_all];
+                   _  -> case lists:member("all", DisabledWarnings) of
+                             true  -> [];
+                             false -> [proplists:get_value(W, all_warnings()) ||
+                                       W <- DisabledWarnings,
+                                       W /= undefined]
+                         end
+               end,
+    case lists:member(error_warning, Opts) of
+        true  -> Warnings ++ [warn_error];
+        false -> Warnings
     end.
