@@ -347,7 +347,10 @@ write_bytecode(OutFile, CompileMap = #{ contract_source := SourceStr, warnings :
             ByteCode = aeser_api_encoder:encode(contract_bytearray, SerByteCode),
             case OutFile of
                 undefined ->
-                    io:format("Bytecode:\n~s\n", [ByteCode]);
+                    case proplists:get_value(pp_asm, Opts, false) of
+                        true -> ok;
+                        false -> io:format("~s\n", [ByteCode])
+                    end;
                 _ ->
                     io:format("Compiled successfully!\n"),
                     io:format("Output written to: ~s\n\n", [OutFile]),
