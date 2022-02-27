@@ -340,16 +340,19 @@ write_bytecode(OutFile, CompileMap = #{ contract_source := SourceStr, warnings :
     %% eblake2 is slow - but NIFs don't work in escript (easily...)
     {ok, SourceHash} = eblake2:blake2b(32, list_to_binary(SourceStr)),
     SerByteCode = aeser_contract_code:serialize(CompileMap#{ source_hash => SourceHash }),
-    [ io:format("Bytecode size: ~p\n", [byte_size(SerByteCode)])
-      || proplists:get_value(pp_size, Opts, false) ],
-    ByteCode = aeser_api_encoder:encode(contract_bytearray, SerByteCode),
-    case OutFile of
-        undefined ->
-            io:format("Bytecode:\n~s\n", [ByteCode]);
-        _ ->
-            io:format("Compiled successfully!\n"),
-            io:format("Output written to: ~s\n\n", [OutFile]),
-            file:write_file(OutFile, ByteCode)
+    case proplists:get_value(pp_size, Opts, false) of
+        true ->
+            io:format("~p\n", [byte_size(SerByteCode)]);
+        false ->
+            ByteCode = aeser_api_encoder:encode(contract_bytearray, SerByteCode),
+            case OutFile of
+                undefined ->
+                    io:format("Bytecode:\n~s\n", [ByteCode]);
+                _ ->
+                    io:format("Compiled successfully!\n"),
+                    io:format("Output written to: ~s\n\n", [OutFile]),
+                    file:write_file(OutFile, ByteCode)
+            end
     end.
 
 write_aci(undefined, ACI) ->
