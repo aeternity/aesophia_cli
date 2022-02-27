@@ -106,18 +106,18 @@ main1(Args) ->
             end;
 
         {ok, {_, NonOpts}} ->
-            io:format("Can't understand ~p\n\n", [NonOpts]),
+            io:format(standard_error, "Can't understand ~p\n\n", [NonOpts]),
             usage();
 
         {error, {Reason, Data}} ->
-            io:format("Error: ~s ~p\n\n", [Reason, Data]),
+            io:format(standard_error, "Error: ~s ~p\n\n", [Reason, Data]),
             usage()
     end.
 
 with_input_file(Opts, Fun) ->
     case proplists:get_value(src_file, Opts, undefined) of
         undefined ->
-            io:format("Error: no input source file\n\n"),
+            io:format(standard_error, "Error: no input source file\n\n", []),
             usage();
         File ->
             Fun(File)
@@ -141,7 +141,7 @@ validate(ByteCode, Opts) ->
         case file:read_file(File) of
             {error, Error} ->
                 Msg = lists:flatten([File,": ",file:format_error(Error)]),
-                io:format("~s\n", [aeso_errors:pp(aeso_errors:new(file_error, Msg))]);
+                io:format(standard_error, "~s\n", [aeso_errors:pp(aeso_errors:new(file_error, Msg))]);
             {ok, Src} ->
                 COpts = get_compiler_opts(Opts),
                 case aeser_api_encoder:decode(list_to_binary(ByteCode)) of
@@ -155,7 +155,7 @@ validate(ByteCode, Opts) ->
                                 {error, Reasons}
                         end;
                     Err ->
-                        io:format("~p\n", [Err])
+                        io:format(standard_error, "~p\n", [Err])
                 end
         end
     end).
@@ -169,7 +169,7 @@ compiled_by(Input0, _Opts) ->
     case aeser_api_encoder:safe_decode(contract_bytearray, Input) of
         {ok, Bin} -> compiled_by(Bin);
         {error, _} ->
-            io:format("ERROR: Input is neither a file or a contract bytearray (cb_...)\n")
+            io:format(standard_error, "ERROR: Input is neither a file or a contract bytearray (cb_...)\n", [])
     end.
 
 compiled_by(Bin) ->
@@ -178,7 +178,7 @@ compiled_by(Bin) ->
         CVer = maps:get(compiler_version, Map, undefined),
         io:format("~s\n", [CVer])
     catch _:_ ->
-        io:format("ERROR: Could not deserialize contract binary\n")
+        io:format(standard_error, "ERROR: Could not deserialize contract binary\n", [])
     end.
 
 create_aci(Type, ContractFile, Opts) ->
@@ -205,14 +205,14 @@ create_calldata(ContractFile, Opts) ->
             Code = binary_to_list(Bin),
             create_calldata_(Code, Opts, get_inc_path(ContractFile, Opts));
         {error, _} ->
-            io:format("Error: Could not find file ~s\n\n", [ContractFile]),
+            io:format(standard_error, "Error: Could not find file ~s\n\n", [ContractFile]),
             usage()
     end.
 
 create_calldata_(Contract, Opts, COpts) ->
     case proplists:get_value(create_calldata_call, Opts, undefined) of
         undefined ->
-            io:format("Error: missing 'call' parameter for calldata creation\n\n"), usage();
+            io:format(standard_error, "Error: missing 'call' parameter for calldata creation\n\n", []), usage();
         Call ->
             case prepare_call(Call) of
                 {ok, Fun, Args} ->
@@ -220,8 +220,10 @@ create_calldata_(Contract, Opts, COpts) ->
                 {error, Reason} when is_atom(Reason) ->
                     {error, Reason};
                 {error, Reasons} ->
-                    io:format("Error: could not parse the arguments, "
-                              "they should be one string with comma separated literals.\n"),
+                    io:format(standard_error,
+                              "Error: could not parse the arguments, "
+                              "they should be one string with comma separated literals.\n",
+                              []),
                     pp_errors(Reasons, Opts),
                     {error, Reasons}
             end
@@ -242,7 +244,7 @@ create_calldata(Contract, CallFun, CallArgs, Opts, COpts) ->
 decode_call_res(EncValue, Opts) ->
     case proplists:get_value(src_file, Opts, undefined) of
         undefined ->
-            io:format("Error: no input source file\n\n"),
+            io:format(standard_error, "Error: no input source file\n\n", []),
             usage();
         File ->
             case file:read_file(File) of
@@ -251,21 +253,21 @@ decode_call_res(EncValue, Opts) ->
                     Backend = get_backend(Opts),
                     decode_call_res(EncValue, Code, Opts, Backend ++ get_inc_path(File, Opts));
                 {error, _} ->
-                    io:format("Error: Could not find file ~s\n", [File])
+                    io:format(standard_error, "Error: Could not find file ~s\n", [File])
             end
     end.
 
 decode_call_res(EncValue, Source, Opts, COpts) ->
     case proplists:get_value(decode_call_fun, Opts, undefined) of
         undefined ->
-            io:format("Error: no --call_result_fun given\n"),
+            io:format(standard_error, "Error: no --call_result_fun given\n", []),
             usage();
         FunName ->
             case aeser_api_encoder:safe_decode(contract_bytearray, list_to_binary(EncValue)) of
                 {ok, CallValue} ->
                     decode_call_res(Source, FunName, proplists:get_value(decode_call_res, Opts), CallValue, Opts, COpts);
                 {error, _} = Err ->
-                    io:format("Error: Bad call result value\n"),
+                    io:format(standard_error, "Error: Bad call result value\n", []),
                     Err
             end
     end.
@@ -287,18 +289,18 @@ decode_data(EncData, Opts) ->
                 {ok, Data} ->
                     decode_data_(Data, Opts);
                 Err = {error, Reason} ->
-                    io:format("Error: Bad data - ~p\n", [Reason]),
+                    io:format(standard_error, "Error: Bad data - ~p\n", [Reason]),
                     Err
             end;
         _ ->
-            io:format("Error: decode_data only supported for AEVM data\n", []),
+            io:format(standard_error, "Error: decode_data only supported for AEVM data\n", []),
             {error, decode_data_for_fate_not_supported}
     end.
 
 decode_data_(Data, Opts) ->
     case proplists:get_value(decode_data_type, Opts, undefined) of
         undefined ->
-            io:format("Error: Missing 'decode_type` parameter\n");
+            io:format(standard_error, "Error: Missing 'decode_type` parameter\n", []);
         SophiaType ->
             decode_data_(Data, SophiaType, Opts)
     end.
@@ -310,14 +312,14 @@ decode_data_(Data, SophiaType, _Opts) ->
                 {ok, Term} ->
                     io:format("Decoded data:\n~p\n", [Term]);
                 Err = {error, Reason} ->
-                    io:format("Error: Failed to decode data - ~p\n", [Reason]),
+                    io:format(standard_error, "Error: Failed to decode data - ~p\n", [Reason]),
                     Err
             catch _T:Reason ->
-                io:format("Error: Failed to decode data - ~p\n", [Reason]),
+                io:format(standard_error, "Error: Failed to decode data - ~p\n", [Reason]),
                 {error, bad_type_or_data}
             end;
         Err = {error, Reason} ->
-            io:format("Error: Bad type - ~p\n", [Reason]),
+            io:format(standard_error, "Error: Bad type - ~p\n", [Reason]),
             Err
     end.
 
@@ -334,7 +336,7 @@ write_calldata(OutFile, CallData) ->
 
 write_bytecode(OutFile, CompileMap = #{ contract_source := SourceStr, warnings := Warnings }, Opts) ->
     %% Print warnings first
-    [io:format("~s\n", [aeso_warnings:pp(Warn)]) || Warn <- Warnings],
+    [io:format(standard_error, "~s\n", [aeso_warnings:pp(Warn)]) || Warn <- Warnings],
     %% eblake2 is slow - but NIFs don't work in escript (easily...)
     {ok, SourceHash} = eblake2:blake2b(32, list_to_binary(SourceStr)),
     SerByteCode = aeser_contract_code:serialize(CompileMap#{ source_hash => SourceHash }),
@@ -364,7 +366,7 @@ prepare_call(Call) ->
             Args = [prepare_arg(Arg) || Arg <- Args0],
             {ok, Fun, Args};
         _ ->
-            io:format("Bad 'call' - it should be \"fun(arg1, arg2, ...)\"\n"),
+            io:format(standard_error, "Bad 'call' - it should be \"fun(arg1, arg2, ...)\"\n", []),
             {error, input_error}
     catch throw:{error, Reasons} ->
         {error, Reasons}
@@ -443,8 +445,8 @@ pp_errors(Reasons, Opts) ->
     case proplists:get_value(oneline_errors, Opts, false) of
         true  ->
             Errors = lists:join("\n", [ aeso_errors:pp_oneline(R) || R <- Reasons ]),
-            io:format("~s\n", [Errors]);
+            io:format(standard_error, "~s\n", [Errors]);
         false ->
             Errors = lists:join("\n", [ aeso_errors:pp(R) || R <- Reasons ]),
-            io:format("~s", [Errors])
+            io:format(standard_error, "~s", [Errors])
     end.
