@@ -24,7 +24,6 @@
     , {decode_call_fun, undefined, "call_result_fun", string,
         "Decode contract call result - function name"}
     , {include_path, $i, "include_path", string, "Explicit include path"}
-    , {backend, $b, "backend", {string, "fate"}, "Compiler backend; fate | aevm"}
     , {no_warning, $w, "no_warning", string,
         "Disabled warnings; " ++ string:join([W || {W, _} <- all_warnings()], " | ")}
     , {error_warning, $e, "error_warning", undefined, "Report warnings as errors"}
@@ -42,10 +41,8 @@ usage() ->
     getopt:usage(?OPT_SPEC, "aesophia_cli"),
     timer:sleep(10),
     io:format("EXAMPLES:\n"
-              "[compile (for default FATE backend)] :\n"
+              "[compile] :\n"
               "  aesophia_cli identity.aes -o identity.aeb\n"
-              "[compile (for AEVM)] :\n"
-              "  aesophia_cli identity.aes -b aevm -o identity.aeb\n"
               "[compile (with unused functions and shadowing warnings disabled)] :\n"
               "  aesophia_cli -wunused_functions -wshadowing identity.aes\n"
               "[compile with explicit include path] :\n"
@@ -57,11 +54,7 @@ usage() ->
               "[create aci JSON] : \n"
               "  aesophia_cli --create_json_aci identity.aes -o identity.json\n"
               "[create calldata] :\n"
-              "  aesophia_cli --create_calldata identity.aes --call \"main_(42)\"\n"
-              "[decode call result] : \n"
-              "  aesophia_cli identity.aes -b aevm --call_result cb_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACr8s/aY --call_result_fun main_\n"
-              "[decode data] :\n"
-              "  aesophia_cli -b aevm --decode_data cb_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACr8s/aY --decode_type int\n\n"),
+              "  aesophia_cli --create_calldata identity.aes --call \"main_(42)\"\n"),
     error.
 
 main(Args) ->
@@ -76,7 +69,6 @@ main1(Args) ->
             IsHelp         = proplists:get_value(help, Opts, false),
             IsVersion      = proplists:get_value(version, Opts, false),
             CreateCallData = proplists:get_value(create_calldata, Opts, undefined),
-            DecodeData     = proplists:get_value(decode_data, Opts, undefined),
             DecodeCall     = proplists:get_value(decode_call_val, Opts, undefined),
             CreateACIJSON  = proplists:get_value(create_json_aci, Opts, undefined),
             CreateACIStub  = proplists:get_value(create_stub_aci, Opts, undefined),
@@ -88,8 +80,6 @@ main1(Args) ->
                     create_calldata(CreateCallData, Opts);
                 DecodeCall /= undefined ->
                     decode_call_res(DecodeCall, Opts);
-                DecodeData /= undefined ->
-                    decode_data(DecodeData, Opts);
                 CreateACIJSON /= undefined ->
                     create_aci(json, CreateACIJSON, Opts);
                 CreateACIStub /= undefined ->
@@ -231,9 +221,8 @@ create_calldata_(Contract, Opts, COpts) ->
 
 create_calldata(Contract, CallFun, CallArgs, Opts, COpts) ->
     OutFile = proplists:get_value(outfile, Opts, undefined),
-    Backend = get_backend(Opts),
 
-    case aeso_compiler:create_calldata(Contract, CallFun, CallArgs, COpts ++ Backend) of
+    case aeso_compiler:create_calldata(Contract, CallFun, CallArgs, COpts) of
         {ok, CallData} ->
             write_calldata(OutFile, CallData);
         {error, Reasons} ->
@@ -250,8 +239,7 @@ decode_call_res(EncValue, Opts) ->
             case file:read_file(File) of
                 {ok, Bin} ->
                     Code = binary_to_list(Bin),
-                    Backend = get_backend(Opts),
-                    decode_call_res(EncValue, Code, Opts, Backend ++ get_inc_path(File, Opts));
+                    decode_call_res(EncValue, Code, Opts, get_inc_path(File, Opts));
                 {error, _} ->
                     io:format(standard_error, "Error: Could not find file ~s\n", [File])
             end
@@ -280,47 +268,6 @@ decode_call_res(Source, FunName, CallRes0, CallValue, Opts, COpts) ->
         {error, Reasons} ->
             pp_errors(Reasons, Opts),
             {error, Reasons}
-    end.
-
-decode_data(EncData, Opts) ->
-    case proplists:get_value(backend, Opts, "fate") of
-        "aevm" ->
-            case aeser_api_encoder:safe_decode(contract_bytearray, list_to_binary(EncData)) of
-                {ok, Data} ->
-                    decode_data_(Data, Opts);
-                Err = {error, Reason} ->
-                    io:format(standard_error, "Error: Bad data - ~p\n", [Reason]),
-                    Err
-            end;
-        _ ->
-            io:format(standard_error, "Error: decode_data only supported for AEVM data\n", []),
-            {error, decode_data_for_fate_not_supported}
-    end.
-
-decode_data_(Data, Opts) ->
-    case proplists:get_value(decode_data_type, Opts, undefined) of
-        undefined ->
-            io:format(standard_error, "Error: Missing 'decode_type` parameter\n", []);
-        SophiaType ->
-            decode_data_(Data, SophiaType, Opts)
-    end.
-
-decode_data_(Data, SophiaType, _Opts) ->
-    case aeso_compiler:sophia_type_to_typerep(SophiaType) of
-        {ok, TypeRep} ->
-            try aeb_heap:from_binary(TypeRep, Data) of
-                {ok, Term} ->
-                    io:format("Decoded data:\n~p\n", [Term]);
-                Err = {error, Reason} ->
-                    io:format(standard_error, "Error: Failed to decode data - ~p\n", [Reason]),
-                    Err
-            catch _T:Reason ->
-                io:format(standard_error, "Error: Failed to decode data - ~p\n", [Reason]),
-                {error, bad_type_or_data}
-            end;
-        Err = {error, Reason} ->
-            io:format(standard_error, "Error: Bad type - ~p\n", [Reason]),
-            Err
     end.
 
 write_calldata(OutFile, CallData) ->
@@ -367,7 +314,7 @@ write_aci(OutFile, ACI) ->
 %% Maybe better to do on the compiler side...
 prepare_call(Call) ->
     try aeso_parser:string("main contract C =\n function foo() = " ++ aeso_scan:utf8_encode(Call)) of
-        [{contract_main, _, _, [{letfun, _, _, _, _, [{guarded, _, [], {app, _, Fun0, Args0}}]}]}] ->
+        [{contract_main, _, _, _, [{letfun, _, _, _, _, [{guarded, _, [], {app, _, Fun0, Args0}}]}]}] ->
             {id, _, Fun} = Fun0,
             Args = [prepare_arg(Arg) || Arg <- Args0],
             {ok, Fun, Args};
@@ -385,11 +332,10 @@ no_nl(Str) -> lists:flatten(string:replace(Str, "\n", "", all)).
 
 get_compiler_opts(Opts) ->
     IncludePath = get_inc_path(Opts),
-    Backend     = get_backend(Opts),
     Verbose     = get_verbose(Opts),
     PPAsm       = get_pp_asm(Opts),
     Warnings    = get_warnings(Opts),
-    Verbose ++ IncludePath ++ Backend ++ PPAsm ++ Warnings.
+    Verbose ++ IncludePath ++ PPAsm ++ Warnings.
 
 get_inc_path(File, Opts) ->
     aeso_compiler:add_include_path(File, get_inc_path(Opts)).
@@ -404,12 +350,6 @@ get_verbose(Opts) ->
     case proplists:get_value(verbose, Opts, false) of
         false -> [];
         true  -> [pp_ast]
-    end.
-
-get_backend(Opts) ->
-    case proplists:get_value(backend, Opts, "fate") of
-        "aevm" -> [{backend, aevm}];
-        _fate  -> [{backend, fate}]
     end.
 
 get_pp_asm(Opts) ->

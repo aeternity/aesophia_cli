@@ -13,7 +13,7 @@ else
 fi
 
 ## Compile
-./aesophia_cli test/contracts/identity.aes -b aevm -o ${TMPFILE}.aeb
+./aesophia_cli test/contracts/identity.aes -o ${TMPFILE}.aeb
 if [ ! -f ${TMPFILE}.aeb ]; then
     echo -e "Test FAILED: compile\\n"
     STATUS=1
@@ -95,28 +95,6 @@ if [ ! -f ${TMPFILE}.calldata3 ]; then
     STATUS=1
 else
     echo -e "Test PASSED: create calldata 3\\n"
-fi
-
-## Decode data
-RES=`./aesophia_cli -b aevm --decode_data cb_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACr8s/aY --decode_type int`
-echo -e "${RES}"
-RES=`echo "${RES}" | tail -n1`
-if [ "${RES}" != "42" ]; then
-    echo -e "Test FAILED: decode data\\n"
-    STATUS=1
-else
-    echo -e "Test PASSED: decode data\\n"
-fi
-
-## Decode data
-RES=`./aesophia_cli -b aevm test/contracts/identity.aes --call_result cb_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACr8s/aY --call_result_fun main_`
-echo -e "${RES}"
-RES=`echo "${RES}" | tail -n1`
-if [ "${RES}" != "42" ]; then
-    echo -e "Test FAILED: decode call result"
-    STATUS=1
-else
-    echo -e "Test PASSED: decode call result"
 fi
 
 rm -rf ${TMPFILE} ${TMPFILE}.*
