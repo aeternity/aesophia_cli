@@ -11,6 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed a bug in calldata encoding - the input was not properly UTF8 encoded.
 ### Removed
 
+## [7.0.0]
+### Changed
+- Updated to [Sophia 7.0.0](https://github.com/aeternity/aesophia/blob/master/CHANGELOG.md#700---2021-10-20)
+### Removed
+- Support for AEVM backend
+- `-b` option to set backend (now only FATE is supported)
+- `decode_data` feature, as it worked only on AEVM
+
 ## [6.1.0]
 ### Changed
 - Updated to [Sophia 6.1.0](https://github.com/aeternity/aesophia/blob/master/CHANGELOG.md#610---2021-10-20)
@@ -69,7 +77,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix bug with standard library includes.
 ### Removed
 
-[Unreleased]: https://github.com/aeternity/aesophia_cli/compare/v6.1.0...HEAD
+[Unreleased]: https://github.com/aeternity/aesophia_cli/compare/v7.0.0...HEAD
+[7.0.0]: https://github.com/aeternity/aesophia_cli/compare/v6.1.0...v7.0.0
 [6.1.0]: https://github.com/aeternity/aesophia_cli/compare/v6.0.2...v6.1.0
 [6.0.2]: https://github.com/aeternity/aesophia_cli/compare/v6.0.1...v6.0.2
 [6.0.1]: https://github.com/aeternity/aesophia_cli/compare/v6.0.0...v6.0.1
