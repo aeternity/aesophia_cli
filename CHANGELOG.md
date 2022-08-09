@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Option `--oneline_errors` for printing errors on one (long) line.
 ### Changed
 - Fixed a bug in calldata encoding - the input was not properly UTF8 encoded.
-- Updated to [Sophia 7.0.0](https://github.com/aeternity/aesophia/blob/master/CHANGELOG.md#700---2021-10-20)
+- Updated to [Sophia 7.0.0](https://github.com/aeternity/aesophia/blob/master/CHANGELOG.md#700)
 ### Removed
 - Support for AEVM backend
 - `-b` option to set backend (now only FATE is supported)
