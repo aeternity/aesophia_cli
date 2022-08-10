@@ -80,7 +80,7 @@ workflows:
             tags:
               only: /^v.*$/
       - deploy_github:
-          context: ae-library
+          context: ae-github
           requires:
             - build
           filters:
