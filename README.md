@@ -2,7 +2,7 @@
 
 A simple command line interface for the [Sophia compiler](https://github.com/aeternity/aesophia).
 
-## Prerequisites
+## Build prerequisites
 
 - A C++ compiler.
 - [libsodium](https://libsodium.gitbook.io/doc/)
