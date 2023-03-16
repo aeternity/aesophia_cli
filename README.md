@@ -1,17 +1,38 @@
-aesophia_cli
-=====
+# aesophia_cli
 
 A simple command line interface for the [Sophia compiler](https://github.com/aeternity/aesophia).
 
-Build
------
+## Build prerequisites
 
-    $ ./rebar3 escriptize
+- A C++ compiler.
+- [libsodium](https://libsodium.gitbook.io/doc/)
+- [Erlang](https://www.erlang.org/)
 
-Run
----
+### Hints for Windows users
 
-    $ ./aesophia_cli
+Erlang can be installed as a [chocolatey package](https://community.chocolatey.org/packages/erlang).
+
+To deal with C++ modules, an example approach is to download [Visual Studio Tools](https://visualstudio.microsoft.com/downloads/)
+and select the following components during the installation:
+
+- MSVC C++ Build Tools
+- Windows SDK
+- C++ module for Build Tools
+
+After that, [vcpkg](https://vcpkg.io/en/index.html) can be used to install the required `libsodium` package.
+It may be needed to update the include directory in the `INCLUDE` variable:
+
+```powershell
+$Env:INCLUDE = $Env:INCLUDE + ';$(VCPKG_INSTALL_DIR)\packages\libsodium_x86-windows\include\'
+```
+
+## Build
+
+    $ escript rebar3 escriptize
+
+## Run
+
+    $ escript aesophia_cli
 
 ```
 EXAMPLES:
@@ -37,6 +58,6 @@ EXAMPLES:
   aesophia_cli --validate cb_+GpGA6CpNW171TSUfk88PoVv7YslUgxRcOJYKFPRxoGkXArWosC4OZ7+RNZEHwA3ADcAGg6CPwEDP/64F37sADcBBwcBAQCWLwIRRNZEHxFpbml0EbgXfuwRbWFpboIvAIk0LjEuMC1yYzEAXs3cNQ== identity.aes
 ```
 
-Test
----
+## Test
+
     $ ./test/test_cli.sh
