@@ -13,10 +13,6 @@
         "Create calldata with respect to (stub-)contract in this file"}
     , {create_calldata_call, undefined, "call", string,
         "Calldata creation - the call, e.g. \"foo(42, true)\""}
-    , {decode_data, undefined, "decode_data", string,
-        "Decode contract call result, input is a contract bytearray (cb_...)"}
-    , {decode_data_type, undefined, "decode_type", string,
-        "The Sophia type to decode data into"}
     , {decode_call_res, undefined, "call_result_type", {string, "ok"},
         "Decode contract call result - 'ok' | 'revert' | 'error'"}
     , {decode_call_val, undefined, "call_result", string,
