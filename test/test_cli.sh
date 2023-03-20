@@ -97,6 +97,15 @@ else
     echo -e "Test PASSED: create calldata 3\\n"
 fi
 
+## Decode calldata
+./aesophia_cli --decode_calldata cb_KxG3+3bAG1StlAV3 --calldata_fun main_ test/contracts/identity.aes
+if [ $? -ne 0 ]; then
+    echo -e "Test FAILED: decode calldata 1\\n"
+    STATUS=1
+else
+    echo -e "Test PASSED: decode calldata 1\\n"
+fi
+
 rm -rf ${TMPFILE} ${TMPFILE}.*
 
 exit ${STATUS}
