@@ -3,6 +3,9 @@ aesophia_cli
 
 A command line interface for the [Sophia compiler](https://github.com/aeternity/aesophia).
 
+The result of compiling a contract is `Sophia byte code` as documented in
+[Aeternity protocol](https://github.com/aeternity/protocol/blob/master/serializations.md#sophia-byte-code-version-3-lima-release).
+
 Build
 -----
 
