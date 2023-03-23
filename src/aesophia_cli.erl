@@ -181,7 +181,7 @@ compiled_by(Bin) ->
 
 create_aci(Type, ContractFile, Opts) ->
     OutFile = proplists:get_value(outfile, Opts, undefined),
-    IncPath = get_inc_path(Opts),
+    IncPath = get_inc_path(ContractFile, Opts),
     Verbose = get_verbose(Opts),
     case aeso_aci:file(json, ContractFile, Verbose ++ IncPath) of
         {ok, Enc} ->
@@ -391,7 +391,7 @@ get_compiler_opts(File, Opts) ->
 get_inc_path(undefined, Opts) ->
     get_inc_path(Opts);
 get_inc_path(File, Opts) ->
-    aeso_compiler:add_include_path(File, get_inc_path(Opts)).
+    [{src_file, File} | aeso_compiler:add_include_path(File, get_inc_path(Opts))].
 
 get_inc_path(Opts) ->
     case [ Path || {include_path, Path} <- Opts ] of
