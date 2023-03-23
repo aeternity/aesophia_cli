@@ -141,7 +141,7 @@ validate(ByteCode, Opts) ->
                 Msg = lists:flatten([File,": ",file:format_error(Error)]),
                 io:format(standard_error, "~s\n", [aeso_errors:pp(aeso_errors:new(file_error, Msg))]);
             {ok, Src} ->
-                COpts = get_compiler_opts(Opts),
+                COpts = get_compiler_opts(File, Opts),
                 case aeser_api_encoder:decode(list_to_binary(ByteCode)) of
                     {contract_bytearray, Bin} ->
                         Map = aeser_contract_code:deserialize(Bin),
@@ -379,12 +379,17 @@ prepare_arg(Arg)               -> no_nl(prettypr:format(aeso_pretty:expr(Arg))).
 no_nl(Str) -> lists:flatten(string:replace(Str, "\n", "", all)).
 
 get_compiler_opts(Opts) ->
-    IncludePath = get_inc_path(Opts),
+    get_compiler_opts(undefined, Opts).
+
+get_compiler_opts(File, Opts) ->
+    IncludePath = get_inc_path(File, Opts),
     Verbose     = get_verbose(Opts),
     PPAsm       = get_pp_asm(Opts),
     Warnings    = get_warnings(Opts),
     Verbose ++ IncludePath ++ PPAsm ++ Warnings.
 
+get_inc_path(undefined, Opts) ->
+    get_inc_path(Opts);
 get_inc_path(File, Opts) ->
     aeso_compiler:add_include_path(File, get_inc_path(Opts)).
 
