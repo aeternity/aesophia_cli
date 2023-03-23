@@ -1,10 +1,12 @@
 aesophia_cli
 =====
 
-A simple command line interface for the [Sophia compiler](https://github.com/aeternity/aesophia).
+A command line interface for the [Sophia compiler](https://github.com/aeternity/aesophia).
 
 Build
 -----
+
+You need Erlang/OTP (version 23 or newer) installed to build the compiler CLI.
 
     $ ./rebar3 escriptize
 
