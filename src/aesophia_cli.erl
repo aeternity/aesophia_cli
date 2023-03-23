@@ -57,6 +57,8 @@ usage() ->
               "  aesophia_cli --create_calldata identity.aes --call \"main_(42)\"\n"
               "[decode calldata] :\n"
               "  aesophia_cli --decode_calldata cb_KxG3+3bAG1StlAV3 --calldata_fun main_ identity.aes\n"
+              "[decode call result] :\n"
+              "  aesophia_cli --call_result cb_VNLOFXc= --call_result_type ok --call_result_fun main_ identity.aes\n"
              ),
     error.
 

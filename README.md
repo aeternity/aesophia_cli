@@ -15,12 +15,16 @@ Run
 
     $ ./aesophia_cli
 
+
+Examples
+--------
+
+Simple test contracts in `test/contracts/`.
+
+
 ```
-EXAMPLES:
-[compile (for default FATE backend)] :
+[compile] :
   aesophia_cli identity.aes -o identity.aeb
-[compile (for AEVM)] :
-  aesophia_cli identity.aes -b aevm -o identity.aeb
 [compile (with unused functions and shadowing warnings enabled)] :
   aesophia_cli -wunused_functions -wshadowing identity.aes
 [compile with explicit include path] :
@@ -30,15 +34,15 @@ EXAMPLES:
 [create aci JSON] :
   aesophia_cli --create_json_aci identity.aes -o identity.json
 [create calldata] :
-  aesophia_cli --create_calldata identity.aes --call "main(42)"
+  aesophia_cli --create_calldata identity.aes --call "main_(42)"
+[decode calldata] :
+  aesophia_cli --decode_calldata cb_KxG3+3bAG1StlAV3 --calldata_fun main_ identity.aes
 [decode call result] :
-  aesophia_cli identity.aes -b aevm --call_result cb_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACr8s/aY --call_result_fun main
-[decode data] :
-  aesophia_cli -b aevm --decode_data cb_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACr8s/aY --decode_type int
+  aesophia_cli --call_result cb_VNLOFXc= --call_result_type ok --call_result_fun main_ identity.aes
 [validate byte code] :
-  aesophia_cli --validate cb_+GpGA6CpNW171TSUfk88PoVv7YslUgxRcOJYKFPRxoGkXArWosC4OZ7+RNZEHwA3ADcAGg6CPwEDP/64F37sADcBBwcBAQCWLwIRRNZEHxFpbml0EbgXfuwRbWFpboIvAIk0LjEuMC1yYzEAXs3cNQ== identity.aes
+  aesophia_cli --validate cb_+GdGA6C7MajPXETkDK+UVqKYiFfJYQR/4jFNiD8Vqjl3gxZWvsC4Op7+RNZEHwA3ADcAGg6CPwEDP/63+3bAADcBBwcBAQCXLwIRRNZEHxFpbml0Ebf7dsAVbWFpbl+CLwCFNy4xLjAA6UiBbQ== identity.aes
 ```
 
-Test
----
+Internal tests
+--------------
     $ ./test/test_cli.sh
