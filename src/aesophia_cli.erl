@@ -57,6 +57,8 @@ usage() ->
               "  aesophia_cli --create_calldata identity.aes --call \"main_(42)\"\n"
               "[decode calldata] :\n"
               "  aesophia_cli --decode_calldata cb_KxG3+3bAG1StlAV3 --calldata_fun main_ identity.aes\n"
+              "[decode call result] :\n"
+              "  aesophia_cli --call_result cb_VNLOFXc= --call_result_type ok --call_result_fun main_ identity.aes\n"
              ),
     error.
 
@@ -139,7 +141,7 @@ validate(ByteCode, Opts) ->
                 Msg = lists:flatten([File,": ",file:format_error(Error)]),
                 io:format(standard_error, "~s\n", [aeso_errors:pp(aeso_errors:new(file_error, Msg))]);
             {ok, Src} ->
-                COpts = get_compiler_opts(Opts),
+                COpts = get_compiler_opts(File, Opts),
                 case aeser_api_encoder:decode(list_to_binary(ByteCode)) of
                     {contract_bytearray, Bin} ->
                         Map = aeser_contract_code:deserialize(Bin),
@@ -179,7 +181,7 @@ compiled_by(Bin) ->
 
 create_aci(Type, ContractFile, Opts) ->
     OutFile = proplists:get_value(outfile, Opts, undefined),
-    IncPath = get_inc_path(Opts),
+    IncPath = get_inc_path(ContractFile, Opts),
     Verbose = get_verbose(Opts),
     case aeso_aci:file(json, ContractFile, Verbose ++ IncPath) of
         {ok, Enc} ->
@@ -377,14 +379,19 @@ prepare_arg(Arg)               -> no_nl(prettypr:format(aeso_pretty:expr(Arg))).
 no_nl(Str) -> lists:flatten(string:replace(Str, "\n", "", all)).
 
 get_compiler_opts(Opts) ->
-    IncludePath = get_inc_path(Opts),
+    get_compiler_opts(undefined, Opts).
+
+get_compiler_opts(File, Opts) ->
+    IncludePath = get_inc_path(File, Opts),
     Verbose     = get_verbose(Opts),
     PPAsm       = get_pp_asm(Opts),
     Warnings    = get_warnings(Opts),
     Verbose ++ IncludePath ++ PPAsm ++ Warnings.
 
+get_inc_path(undefined, Opts) ->
+    get_inc_path(Opts);
 get_inc_path(File, Opts) ->
-    aeso_compiler:add_include_path(File, get_inc_path(Opts)).
+    [{src_file, File} | aeso_compiler:add_include_path(File, get_inc_path(Opts))].
 
 get_inc_path(Opts) ->
     case [ Path || {include_path, Path} <- Opts ] of

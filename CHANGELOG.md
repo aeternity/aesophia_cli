@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add decode calldata functionality:
   `aesophia_cli --decode_calldata cb_KxG3+3bAG1StlAV3 --calldata_fun main_ test/contracts/identity.aes`
 ### Changed
+- add `src_file` to default compiler opts for better error reporting
+- fixed bug with include files when using `--validate`
 ### Removed
 
 ## [7.1.0]
