@@ -9,6 +9,7 @@
         "Create ACI in JSON format"}
     , {create_stub_aci, undefined, "create_stub_aci", string,
         "Create ACI stub-contract"}
+    , {no_code_aci, undefined, "no_code", undefined, "Generate ACI from stub/partial contract"}
     , {create_calldata, undefined, "create_calldata", string,
         "Create calldata with respect to (stub-)contract in this file"}
     , {create_calldata_call, undefined, "call", string,
@@ -180,10 +181,11 @@ compiled_by(Bin) ->
     end.
 
 create_aci(Type, ContractFile, Opts) ->
-    OutFile = proplists:get_value(outfile, Opts, undefined),
-    IncPath = get_inc_path(ContractFile, Opts),
-    Verbose = get_verbose(Opts),
-    case aeso_aci:file(json, ContractFile, Verbose ++ IncPath) of
+    OutFile   = proplists:get_value(outfile, Opts, undefined),
+    IncPath   = get_inc_path(ContractFile, Opts),
+    Verbose   = get_verbose(Opts),
+    ACINoCode = proplists:get_value(no_code_aci, Opts, false),
+    case aeso_aci:file(json, ContractFile, Verbose ++ IncPath ++ [{no_code, ACINoCode}]) of
         {ok, Enc} ->
             case Type of
                 json ->
