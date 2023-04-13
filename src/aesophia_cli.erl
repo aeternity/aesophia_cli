@@ -5,13 +5,11 @@
 -define(OPT_SPEC,
     [ {src_file, undefined, undefined, string, "Sophia source code file"}
     , {help, $h, "help", undefined, "Show this message"}
-    , {create_json_aci, undefined, "create_json_aci", string,
-        "Create ACI in JSON format"}
-    , {create_stub_aci, undefined, "create_stub_aci", string,
-        "Create ACI stub-contract"}
+    , {create_json_aci, undefined, "create_json_aci", undefined, "Create ACI in JSON format"}
+    , {create_stub_aci, undefined, "create_stub_aci", undefined, "Create ACI stub-contract"}
     , {no_code_aci, undefined, "no_code", undefined, "Generate ACI from stub/partial contract"}
-    , {create_calldata, undefined, "create_calldata", string,
-        "Create calldata with respect to (stub-)contract in this file"}
+    , {create_calldata, undefined, "create_calldata", undefined,
+        "Create calldata with respect to (stub-)contract"}
     , {create_calldata_call, undefined, "call", string,
         "Calldata creation - the call, e.g. \"foo(42, true)\""}
     , {decode_call_res, undefined, "call_result_type", {string, "ok"},
@@ -55,7 +53,7 @@ usage() ->
               "[create aci JSON] : \n"
               "  aesophia_cli --create_json_aci identity.aes -o identity.json\n"
               "[create calldata] :\n"
-              "  aesophia_cli --create_calldata identity.aes --call \"main_(42)\"\n"
+              "  aesophia_cli --create_calldata --call \"main_(42)\" identity.aes\n"
               "[decode calldata] :\n"
               "  aesophia_cli --decode_calldata cb_KxG3+3bAG1StlAV3 --calldata_fun main_ identity.aes\n"
               "[decode call result] :\n"
@@ -74,32 +72,39 @@ main1(Args) ->
         {ok, {Opts, []}} ->
             IsHelp         = proplists:get_value(help, Opts, false),
             IsVersion      = proplists:get_value(version, Opts, false),
-            CreateCallData = proplists:get_value(create_calldata, Opts, undefined),
+            CreateCallData = proplists:get_value(create_calldata, Opts, false),
             DecodeCall     = proplists:get_value(decode_call_val, Opts, undefined),
             DecodeCallData = proplists:get_value(decode_calldata, Opts, undefined),
-            CreateACIJSON  = proplists:get_value(create_json_aci, Opts, undefined),
-            CreateACIStub  = proplists:get_value(create_stub_aci, Opts, undefined),
+            CreateACIJSON  = proplists:get_value(create_json_aci, Opts, false),
+            CreateACIStub  = proplists:get_value(create_stub_aci, Opts, false),
             CompiledBy     = proplists:get_value(compiled_by, Opts, undefined),
             Validate       = proplists:get_value(to_validate, Opts, undefined),
+            MultiOptErr    = (CreateCallData andalso CreateACIJSON) orelse
+                             (CreateCallData andalso CreateACIStub) orelse
+                             (CreateACIJSON andalso CreateACIStub),
             if  IsHelp ->
                     usage();
-                CreateCallData /= undefined ->
-                    create_calldata(CreateCallData, Opts);
+                IsVersion ->
+                    {ok, Vsn} = aeso_compiler:version(),
+                    io:format("Sophia compiler version ~s\n", [Vsn]);
+                MultiOptErr ->
+                    io:format(standard_error, "Error: only one of 'create_calldata', 'create_json_aci', "
+                              "or 'create_stub_aci' is allowed in a single command\n\n", []),
+                    error;
+                CreateCallData ->
+                    create_calldata(Opts);
                 DecodeCall /= undefined ->
                     decode_call_res(DecodeCall, Opts);
                 DecodeCallData /= undefined ->
                     decode_calldata(DecodeCallData, Opts);
-                CreateACIJSON /= undefined ->
-                    create_aci(json, CreateACIJSON, Opts);
-                CreateACIStub /= undefined ->
-                    create_aci(stub, CreateACIStub, Opts);
+                CreateACIJSON ->
+                    create_aci(json, Opts);
+                CreateACIStub ->
+                    create_aci(stub, Opts);
                 CompiledBy /= undefined ->
                     compiled_by(CompiledBy, Opts);
                 Validate /= undefined ->
                     validate(Validate, Opts);
-                IsVersion ->
-                    {ok, Vsn} = aeso_compiler:version(),
-                    io:format("Sophia compiler version ~s\n", [Vsn]);
                 true ->
                     compile(Opts)
             end;
@@ -180,6 +185,9 @@ compiled_by(Bin) ->
         io:format(standard_error, "ERROR: Could not deserialize contract binary\n", [])
     end.
 
+create_aci(Type, Opts) ->
+    with_input_file(Opts, fun(File) -> create_aci(Type, File, Opts) end).
+
 create_aci(Type, ContractFile, Opts) ->
     OutFile   = proplists:get_value(outfile, Opts, undefined),
     IncPath   = get_inc_path(ContractFile, Opts),
@@ -198,6 +206,9 @@ create_aci(Type, ContractFile, Opts) ->
             pp_errors(Reasons, Opts),
             {error, Reasons}
     end.
+
+create_calldata(Opts) ->
+    with_input_file(Opts, fun(File) -> create_calldata(File, Opts) end).
 
 create_calldata(ContractFile, Opts) ->
     case file:read_file(ContractFile) of
@@ -240,19 +251,17 @@ create_calldata(Contract, CallFun, CallArgs, Opts, COpts) ->
             {error, Reasons}
     end.
 
+
 decode_call_res(EncValue, Opts) ->
-    case proplists:get_value(src_file, Opts, undefined) of
-        undefined ->
-            io:format(standard_error, "Error: no input source file\n\n", []),
-            usage();
-        File ->
-            case file:read_file(File) of
-                {ok, Bin} ->
-                    Code = binary_to_list(Bin),
-                    decode_call_res(EncValue, Code, Opts, get_inc_path(File, Opts));
-                {error, _} ->
-                    io:format(standard_error, "Error: Could not find file ~s\n", [File])
-            end
+    with_input_file(Opts, fun(File) -> decode_call_res(EncValue, File, Opts) end).
+
+decode_call_res(EncValue, File, Opts) ->
+    case file:read_file(File) of
+        {ok, Bin} ->
+            Code = binary_to_list(Bin),
+            decode_call_res(EncValue, Code, Opts, get_inc_path(File, Opts));
+        {error, _} ->
+            io:format(standard_error, "Error: Could not find file ~s\n", [File])
     end.
 
 decode_call_res(EncValue, Source, Opts, COpts) ->
@@ -281,18 +290,15 @@ decode_call_res(Source, FunName, CallRes0, CallValue, Opts, COpts) ->
     end.
 
 decode_calldata(EncValue, Opts) ->
-    case proplists:get_value(src_file, Opts, undefined) of
-        undefined ->
-            io:format(standard_error, "Error: no input source file\n\n", []),
-            usage();
-        File ->
-            case file:read_file(File) of
-                {ok, Bin} ->
-                    Code = binary_to_list(Bin),
-                    decode_calldata(EncValue, Code, Opts, get_inc_path(File, Opts));
-                {error, _} ->
-                    io:format(standard_error, "Error: Could not find file ~s\n", [File])
-            end
+    with_input_file(Opts, fun(File) -> decode_calldata(EncValue, File, Opts) end).
+
+decode_calldata(EncValue, File, Opts) ->
+    case file:read_file(File) of
+        {ok, Bin} ->
+            Code = binary_to_list(Bin),
+            decode_calldata(EncValue, Code, Opts, get_inc_path(File, Opts));
+        {error, _} ->
+            io:format(standard_error, "Error: Could not find file ~s\n", [File])
     end.
 
 decode_calldata(EncValue, Source, Opts, COpts) ->
