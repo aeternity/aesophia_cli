@@ -71,6 +71,15 @@ test_chk $? "create calldata 3"
 ./aesophia_cli --decode_calldata cb_KxG3+3bAG1StlAV3 --calldata_fun main_ test/contracts/identity.aes
 test_chk $? "decode calldata 1"
 
+## Encode value
+./aesophia_cli --encode_value "{a = 42, b = OneF(Frac.Pos(1, 1))}" --value_type "r" test/contracts/types.aes
+test_chk $? "encode value"
+
+## Decode value
+ENCODED=`./aesophia_cli --encode_value "{a = 42, b = OneF(Frac.Pos(1, 1))}" --value_type "r" test/contracts/types.aes | grep cb_`
+./aesophia_cli --decode_value ${ENCODED} --value_type "r" test/contracts/types.aes
+test_chk $? "decode value"
+
 rm -rf ${TMPFILE} ${TMPFILE}.*
 
 exit ${STATUS}
