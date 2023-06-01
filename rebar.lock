@@ -9,7 +9,7 @@
   0},
  {<<"aesophia">>,
   {git,"https://github.com/aeternity/aesophia.git",
-       {ref,"1c7f0dcb26b4010cda50ea3aa4bb823daae024c8"}},
+       {ref,"7bac15949c436a0de89f0063637ceca00c50ceb8"}},
   0},
  {<<"base58">>,
   {git,"https://github.com/aeternity/erl-base58.git",
