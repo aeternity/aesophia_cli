@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `aesophia_cli --decode_calldata cb_KxG3+3bAG1StlAV3 --calldata_fun main_ test/contracts/identity.aes`
 - Generate ACI from stub/partial contract with `--no-code` flag
   `aesophia_cli --create_json_aci <contract_stub> --no_code`
+- Add encode/decode functionality for Sophia values:
+  `aesophia_cli --encode_value "(42, true)" --value_type "int * bool"`
+  `aesophia_cli --decode_value cb_VNLOFXc= --value_type "int * bool"`
 ### Changed
 - add `src_file` to default compiler opts for better error reporting
 - fixed bug with include files when using `--validate`

@@ -22,6 +22,9 @@
         "Decode calldata - input is contract bytearray (cb_...)"}
     , {decode_calldata_fun, undefined, "calldata_fun", string,
         "Decode calldata - function name"}
+    , {encode_value, undefined, "encode_value", string, "Encode a Sophia value as FATE data"}
+    , {decode_value, undefined, "decode_value", string, "Decode a Sophia value from FATE data (cb_...)"}
+    , {value_type, undefined, "value_type", string, "Sophia type of/for encoded/decoded value"}
     , {include_path, $i, "include_path", string, "Explicit include path"}
     , {no_warning, $w, "no_warning", string,
         "Disabled warnings; " ++ string:join([W || {W, _} <- all_warnings()], " | ")}
@@ -58,6 +61,10 @@ usage() ->
               "  aesophia_cli --decode_calldata cb_KxG3+3bAG1StlAV3 --calldata_fun main_ identity.aes\n"
               "[decode call result] :\n"
               "  aesophia_cli --call_result cb_VNLOFXc= --call_result_type ok --call_result_fun main_ identity.aes\n"
+              "[encode value] :\n"
+              "  aesophia_cli --encode_value \"(42, true)\" --value_type \"int * bool\"\n"
+              "[decode value] :\n"
+              "  aesophia_cli --decode_value cb_VNLOFXc= --value_type \"int * bool\"\n"
              ),
     error.
 
@@ -77,6 +84,8 @@ main1(Args) ->
             DecodeCallData = proplists:get_value(decode_calldata, Opts, undefined),
             CreateACIJSON  = proplists:get_value(create_json_aci, Opts, false),
             CreateACIStub  = proplists:get_value(create_stub_aci, Opts, false),
+            EncodeValue    = proplists:get_value(encode_value, Opts, undefined),
+            DecodeValue    = proplists:get_value(decode_value, Opts, undefined),
             CompiledBy     = proplists:get_value(compiled_by, Opts, undefined),
             Validate       = proplists:get_value(to_validate, Opts, undefined),
             MultiOptErr    = (CreateCallData andalso CreateACIJSON) orelse
@@ -97,6 +106,10 @@ main1(Args) ->
                     decode_call_res(DecodeCall, Opts);
                 DecodeCallData /= undefined ->
                     decode_calldata(DecodeCallData, Opts);
+                EncodeValue /= undefined ->
+                    encode_value(EncodeValue, Opts);
+                DecodeValue /= undefined ->
+                    decode_value(DecodeValue, Opts);
                 CreateACIJSON ->
                     create_aci(json, Opts);
                 CreateACIStub ->
@@ -205,6 +218,63 @@ create_aci(Type, ContractFile, Opts) ->
         {error, Reasons} ->
             pp_errors(Reasons, Opts),
             {error, Reasons}
+    end.
+
+encode_value(Value, Opts) ->
+    with_default_empty_input_file(Opts,
+        fun(Input) -> with_value_type(Opts, fun(Type) -> encode_value(Input, Value, Type, Opts) end) end).
+
+decode_value(EncValue, Opts) ->
+    with_default_empty_input_file(Opts,
+        fun(Input) -> with_value_type(Opts, fun(Type) -> decode_value(Input, EncValue, Type, Opts) end) end).
+
+with_default_empty_input_file(Opts, Fun) ->
+    case proplists:get_value(src_file, Opts, undefined) of
+        undefined ->
+            Fun("contract C = \n  entrypoint foo() = true");
+        File ->
+            case file:read_file(File) of
+                {ok, Bin} ->
+                    Code = binary_to_list(Bin),
+                    Fun(Code);
+                {error, _} ->
+                    io:format(standard_error, "Error: Could not find file ~s\n\n", [File]),
+                    usage()
+            end
+    end.
+
+with_value_type(Opts, Fun) ->
+    case proplists:get_value(value_type, Opts, undefined) of
+        undefined ->
+            io:format(standard_error, "Error: no 'value_type' given as argument\n\n", []),
+            usage();
+        Type ->
+          Fun(Type)
+    end.
+
+encode_value(Input, Value, Type, Opts) ->
+    case aeso_compiler:encode_value(Input, Type, Value, []) of
+        {ok, FateValue} ->
+            EncValue = aeser_api_encoder:encode(contract_bytearray, FateValue),
+            io:format("Encoded value:\n~s\n", [EncValue]);
+        {error, Reasons} ->
+            pp_errors(Reasons, Opts),
+            {error, Reasons}
+    end.
+
+decode_value(Input, EncValue, Type, Opts) ->
+    case aeser_api_encoder:safe_decode(contract_bytearray, list_to_binary(EncValue)) of
+        {ok, FateValue} ->
+            case aeso_compiler:decode_value(Input, Type, FateValue, []) of
+                {ok, Value} ->
+                    io:format("Decoded value:\n~s\n", [prettypr:format(aeso_pretty:expr(Value))]);
+                {error, Reasons} ->
+                    pp_errors(Reasons, Opts),
+                    {error, Reasons}
+            end;
+        {error, _} = Err ->
+            io:format(standard_error, "Error: Bad value\n", []),
+            Err
     end.
 
 create_calldata(Opts) ->
