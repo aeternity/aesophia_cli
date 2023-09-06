@@ -9,6 +9,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 ### Removed
 
+## [7.4.0]
+### Changed
+- Updated to [Sophia 7.4.0](https://github.com/aeternity/aesophia/blob/master/CHANGELOG.md#740)
+
+## [7.3.0]
+### Changed
+- Updated to [Sophia 7.3.0](https://github.com/aeternity/aesophia/blob/master/CHANGELOG.md#730)
+
+## [7.2.1]
+### Added
+- Decode calldata functionality:
+  `aesophia_cli --decode_calldata cb_KxG3+3bAG1StlAV3 --calldata_fun main_ test/contracts/identity.aes`
+- Generate ACI from stub/partial contract with `--no-code` flag
+  `aesophia_cli --create_json_aci <contract_stub> --no_code`
+- Add encode/decode functionality for Sophia values:
+  `aesophia_cli --encode_value "(42, true)" --value_type "int * bool"`
+  `aesophia_cli --decode_value cb_VNLOFXc= --value_type "int * bool"`
+### Changed
+- Updated to [Sophia 7.2.1](https://github.com/aeternity/aesophia/blob/master/CHANGELOG.md#721)
+- add `src_file` to default compiler opts for better error reporting
+- fixed bug with include files when using `--validate`
+
+## [7.1.0]
+### Changed
+- Updated to [Sophia 7.1.0](https://github.com/aeternity/aesophia/blob/master/CHANGELOG.md#710)
+
 ## [7.0.1]
 ### Changed
 - Updated to [Sophia 7.0.1](https://github.com/aeternity/aesophia/blob/master/CHANGELOG.md#701)
@@ -82,7 +108,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix bug with standard library includes.
 ### Removed
 
-[Unreleased]: https://github.com/aeternity/aesophia_cli/compare/v7.0.1...HEAD
+[Unreleased]: https://github.com/aeternity/aesophia_cli/compare/v7.4.0...HEAD
+[7.4.0]: https://github.com/aeternity/aesophia_cli/compare/v7.3.0...v7.4.0
+[7.3.0]: https://github.com/aeternity/aesophia_cli/compare/v7.2.1...v7.3.0
+[7.2.1]: https://github.com/aeternity/aesophia_cli/compare/v7.1.0...v7.2.1
+[7.1.0]: https://github.com/aeternity/aesophia_cli/compare/v7.0.1...v7.1.0
 [7.0.1]: https://github.com/aeternity/aesophia_cli/compare/v7.0.0...v7.0.1
 [7.0.0]: https://github.com/aeternity/aesophia_cli/compare/v6.1.0...v7.0.0
 [6.1.0]: https://github.com/aeternity/aesophia_cli/compare/v6.0.2...v6.1.0

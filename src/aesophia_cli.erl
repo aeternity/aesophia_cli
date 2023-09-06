@@ -5,24 +5,26 @@
 -define(OPT_SPEC,
     [ {src_file, undefined, undefined, string, "Sophia source code file"}
     , {help, $h, "help", undefined, "Show this message"}
-    , {create_json_aci, undefined, "create_json_aci", string,
-        "Create ACI in JSON format"}
-    , {create_stub_aci, undefined, "create_stub_aci", string,
-        "Create ACI stub-contract"}
-    , {create_calldata, undefined, "create_calldata", string,
-        "Create calldata with respect to (stub-)contract in this file"}
+    , {create_json_aci, undefined, "create_json_aci", undefined, "Create ACI in JSON format"}
+    , {create_stub_aci, undefined, "create_stub_aci", undefined, "Create ACI stub-contract"}
+    , {no_code_aci, undefined, "no_code", undefined, "Generate ACI from stub/partial contract"}
+    , {create_calldata, undefined, "create_calldata", undefined,
+        "Create calldata with respect to (stub-)contract"}
     , {create_calldata_call, undefined, "call", string,
         "Calldata creation - the call, e.g. \"foo(42, true)\""}
-    , {decode_data, undefined, "decode_data", string,
-        "Decode contract call result, input is a contract bytearray (cb_...)"}
-    , {decode_data_type, undefined, "decode_type", string,
-        "The Sophia type to decode data into"}
     , {decode_call_res, undefined, "call_result_type", {string, "ok"},
         "Decode contract call result - 'ok' | 'revert' | 'error'"}
     , {decode_call_val, undefined, "call_result", string,
         "Decode contract call result - input is contract bytearray (cb_...) or string"}
     , {decode_call_fun, undefined, "call_result_fun", string,
         "Decode contract call result - function name"}
+    , {decode_calldata, undefined, "decode_calldata", string,
+        "Decode calldata - input is contract bytearray (cb_...)"}
+    , {decode_calldata_fun, undefined, "calldata_fun", string,
+        "Decode calldata - function name"}
+    , {encode_value, undefined, "encode_value", string, "Encode a Sophia value as FATE data"}
+    , {decode_value, undefined, "decode_value", string, "Decode a Sophia value from FATE data (cb_...)"}
+    , {value_type, undefined, "value_type", string, "Sophia type of/for encoded/decoded value"}
     , {include_path, $i, "include_path", string, "Explicit include path"}
     , {no_warning, $w, "no_warning", string,
         "Disabled warnings; " ++ string:join([W || {W, _} <- all_warnings()], " | ")}
@@ -54,7 +56,16 @@ usage() ->
               "[create aci JSON] : \n"
               "  aesophia_cli --create_json_aci identity.aes -o identity.json\n"
               "[create calldata] :\n"
-              "  aesophia_cli --create_calldata identity.aes --call \"main_(42)\"\n"),
+              "  aesophia_cli --create_calldata --call \"main_(42)\" identity.aes\n"
+              "[decode calldata] :\n"
+              "  aesophia_cli --decode_calldata cb_KxG3+3bAG1StlAV3 --calldata_fun main_ identity.aes\n"
+              "[decode call result] :\n"
+              "  aesophia_cli --call_result cb_VNLOFXc= --call_result_type ok --call_result_fun main_ identity.aes\n"
+              "[encode value] :\n"
+              "  aesophia_cli --encode_value \"(42, true)\" --value_type \"int * bool\"\n"
+              "[decode value] :\n"
+              "  aesophia_cli --decode_value cb_VNLOFXc= --value_type \"int * bool\"\n"
+             ),
     error.
 
 main(Args) ->
@@ -68,29 +79,45 @@ main1(Args) ->
         {ok, {Opts, []}} ->
             IsHelp         = proplists:get_value(help, Opts, false),
             IsVersion      = proplists:get_value(version, Opts, false),
-            CreateCallData = proplists:get_value(create_calldata, Opts, undefined),
+            CreateCallData = proplists:get_value(create_calldata, Opts, false),
             DecodeCall     = proplists:get_value(decode_call_val, Opts, undefined),
-            CreateACIJSON  = proplists:get_value(create_json_aci, Opts, undefined),
-            CreateACIStub  = proplists:get_value(create_stub_aci, Opts, undefined),
+            DecodeCallData = proplists:get_value(decode_calldata, Opts, undefined),
+            CreateACIJSON  = proplists:get_value(create_json_aci, Opts, false),
+            CreateACIStub  = proplists:get_value(create_stub_aci, Opts, false),
+            EncodeValue    = proplists:get_value(encode_value, Opts, undefined),
+            DecodeValue    = proplists:get_value(decode_value, Opts, undefined),
             CompiledBy     = proplists:get_value(compiled_by, Opts, undefined),
             Validate       = proplists:get_value(to_validate, Opts, undefined),
+            MultiOptErr    = (CreateCallData andalso CreateACIJSON) orelse
+                             (CreateCallData andalso CreateACIStub) orelse
+                             (CreateACIJSON andalso CreateACIStub),
             if  IsHelp ->
                     usage();
-                CreateCallData /= undefined ->
-                    create_calldata(CreateCallData, Opts);
+                IsVersion ->
+                    {ok, Vsn} = aeso_compiler:version(),
+                    io:format("Sophia compiler version ~s\n", [Vsn]);
+                MultiOptErr ->
+                    io:format(standard_error, "Error: only one of 'create_calldata', 'create_json_aci', "
+                              "or 'create_stub_aci' is allowed in a single command\n\n", []),
+                    error;
+                CreateCallData ->
+                    create_calldata(Opts);
                 DecodeCall /= undefined ->
                     decode_call_res(DecodeCall, Opts);
-                CreateACIJSON /= undefined ->
-                    create_aci(json, CreateACIJSON, Opts);
-                CreateACIStub /= undefined ->
-                    create_aci(stub, CreateACIStub, Opts);
+                DecodeCallData /= undefined ->
+                    decode_calldata(DecodeCallData, Opts);
+                EncodeValue /= undefined ->
+                    encode_value(EncodeValue, Opts);
+                DecodeValue /= undefined ->
+                    decode_value(DecodeValue, Opts);
+                CreateACIJSON ->
+                    create_aci(json, Opts);
+                CreateACIStub ->
+                    create_aci(stub, Opts);
                 CompiledBy /= undefined ->
                     compiled_by(CompiledBy, Opts);
                 Validate /= undefined ->
                     validate(Validate, Opts);
-                IsVersion ->
-                    {ok, Vsn} = aeso_compiler:version(),
-                    io:format("Sophia compiler version ~s\n", [Vsn]);
                 true ->
                     compile(Opts)
             end;
@@ -133,7 +160,7 @@ validate(ByteCode, Opts) ->
                 Msg = lists:flatten([File,": ",file:format_error(Error)]),
                 io:format(standard_error, "~s\n", [aeso_errors:pp(aeso_errors:new(file_error, Msg))]);
             {ok, Src} ->
-                COpts = get_compiler_opts(Opts),
+                COpts = get_compiler_opts(File, Opts),
                 case aeser_api_encoder:decode(list_to_binary(ByteCode)) of
                     {contract_bytearray, Bin} ->
                         Map = aeser_contract_code:deserialize(Bin),
@@ -171,11 +198,15 @@ compiled_by(Bin) ->
         io:format(standard_error, "ERROR: Could not deserialize contract binary\n", [])
     end.
 
+create_aci(Type, Opts) ->
+    with_input_file(Opts, fun(File) -> create_aci(Type, File, Opts) end).
+
 create_aci(Type, ContractFile, Opts) ->
-    OutFile = proplists:get_value(outfile, Opts, undefined),
-    IncPath = get_inc_path(Opts),
-    Verbose = get_verbose(Opts),
-    case aeso_aci:file(json, ContractFile, Verbose ++ IncPath) of
+    OutFile   = proplists:get_value(outfile, Opts, undefined),
+    IncPath   = get_inc_path(ContractFile, Opts),
+    Verbose   = get_verbose(Opts),
+    ACINoCode = proplists:get_value(no_code_aci, Opts, false),
+    case aeso_aci:file(json, ContractFile, Verbose ++ IncPath ++ [{no_code, ACINoCode}]) of
         {ok, Enc} ->
             case Type of
                 json ->
@@ -188,6 +219,66 @@ create_aci(Type, ContractFile, Opts) ->
             pp_errors(Reasons, Opts),
             {error, Reasons}
     end.
+
+encode_value(Value, Opts) ->
+    with_default_empty_input_file(Opts,
+        fun(Input) -> with_value_type(Opts, fun(Type) -> encode_value(Input, Value, Type, Opts) end) end).
+
+decode_value(EncValue, Opts) ->
+    with_default_empty_input_file(Opts,
+        fun(Input) -> with_value_type(Opts, fun(Type) -> decode_value(Input, EncValue, Type, Opts) end) end).
+
+with_default_empty_input_file(Opts, Fun) ->
+    case proplists:get_value(src_file, Opts, undefined) of
+        undefined ->
+            Fun("contract C = \n  entrypoint foo() = true");
+        File ->
+            case file:read_file(File) of
+                {ok, Bin} ->
+                    Code = binary_to_list(Bin),
+                    Fun(Code);
+                {error, _} ->
+                    io:format(standard_error, "Error: Could not find file ~s\n\n", [File]),
+                    usage()
+            end
+    end.
+
+with_value_type(Opts, Fun) ->
+    case proplists:get_value(value_type, Opts, undefined) of
+        undefined ->
+            io:format(standard_error, "Error: no 'value_type' given as argument\n\n", []),
+            usage();
+        Type ->
+          Fun(Type)
+    end.
+
+encode_value(Input, Value, Type, Opts) ->
+    case aeso_compiler:encode_value(Input, Type, Value, []) of
+        {ok, FateValue} ->
+            EncValue = aeser_api_encoder:encode(contract_bytearray, FateValue),
+            io:format("Encoded value:\n~s\n", [EncValue]);
+        {error, Reasons} ->
+            pp_errors(Reasons, Opts),
+            {error, Reasons}
+    end.
+
+decode_value(Input, EncValue, Type, Opts) ->
+    case aeser_api_encoder:safe_decode(contract_bytearray, list_to_binary(EncValue)) of
+        {ok, FateValue} ->
+            case aeso_compiler:decode_value(Input, Type, FateValue, []) of
+                {ok, Value} ->
+                    io:format("Decoded value:\n~s\n", [prettypr:format(aeso_pretty:expr(Value))]);
+                {error, Reasons} ->
+                    pp_errors(Reasons, Opts),
+                    {error, Reasons}
+            end;
+        {error, _} = Err ->
+            io:format(standard_error, "Error: Bad value\n", []),
+            Err
+    end.
+
+create_calldata(Opts) ->
+    with_input_file(Opts, fun(File) -> create_calldata(File, Opts) end).
 
 create_calldata(ContractFile, Opts) ->
     case file:read_file(ContractFile) of
@@ -230,19 +321,17 @@ create_calldata(Contract, CallFun, CallArgs, Opts, COpts) ->
             {error, Reasons}
     end.
 
+
 decode_call_res(EncValue, Opts) ->
-    case proplists:get_value(src_file, Opts, undefined) of
-        undefined ->
-            io:format(standard_error, "Error: no input source file\n\n", []),
-            usage();
-        File ->
-            case file:read_file(File) of
-                {ok, Bin} ->
-                    Code = binary_to_list(Bin),
-                    decode_call_res(EncValue, Code, Opts, get_inc_path(File, Opts));
-                {error, _} ->
-                    io:format(standard_error, "Error: Could not find file ~s\n", [File])
-            end
+    with_input_file(Opts, fun(File) -> decode_call_res(EncValue, File, Opts) end).
+
+decode_call_res(EncValue, File, Opts) ->
+    case file:read_file(File) of
+        {ok, Bin} ->
+            Code = binary_to_list(Bin),
+            decode_call_res(EncValue, Code, Opts, get_inc_path(File, Opts));
+        {error, _} ->
+            io:format(standard_error, "Error: Could not find file ~s\n", [File])
     end.
 
 decode_call_res(EncValue, Source, Opts, COpts) ->
@@ -265,6 +354,43 @@ decode_call_res(Source, FunName, CallRes0, CallValue, Opts, COpts) ->
     case aeso_compiler:to_sophia_value(Source, FunName, CallRes, CallValue, COpts) of
         {ok, Ast} ->
             io:format("Decoded call result:\n~s\n", [prettypr:format(aeso_pretty:expr(Ast))]);
+        {error, Reasons} ->
+            pp_errors(Reasons, Opts),
+            {error, Reasons}
+    end.
+
+decode_calldata(EncValue, Opts) ->
+    with_input_file(Opts, fun(File) -> decode_calldata(EncValue, File, Opts) end).
+
+decode_calldata(EncValue, File, Opts) ->
+    case file:read_file(File) of
+        {ok, Bin} ->
+            Code = binary_to_list(Bin),
+            decode_calldata(EncValue, Code, Opts, get_inc_path(File, Opts));
+        {error, _} ->
+            io:format(standard_error, "Error: Could not find file ~s\n", [File])
+    end.
+
+decode_calldata(EncValue, Source, Opts, COpts) ->
+    case proplists:get_value(decode_calldata_fun, Opts, undefined) of
+        undefined ->
+            io:format(standard_error, "Error: no --calldata_fun given\n", []),
+            usage();
+        FunName ->
+            case aeser_api_encoder:safe_decode(contract_bytearray, list_to_binary(EncValue)) of
+                {ok, Calldata} ->
+                    decode_calldata(Source, FunName, Calldata, Opts, COpts);
+                {error, _} = Err ->
+                    io:format(standard_error, "Error: Bad calldata value\n", []),
+                    Err
+            end
+    end.
+
+decode_calldata(Source, FunName, Calldata, Opts, COpts) ->
+    case aeso_compiler:decode_calldata(Source, FunName, Calldata, COpts) of
+        {ok, _Types, ArgAsts} ->
+            Args = lists:join(", ", [ prettypr:format(aeso_pretty:expr(ArgAst)) || ArgAst <- ArgAsts ]),
+            io:format("Decoded calldata:\n~s(~s)\n", [FunName, Args]);
         {error, Reasons} ->
             pp_errors(Reasons, Opts),
             {error, Reasons}
@@ -331,14 +457,19 @@ prepare_arg(Arg)               -> no_nl(prettypr:format(aeso_pretty:expr(Arg))).
 no_nl(Str) -> lists:flatten(string:replace(Str, "\n", "", all)).
 
 get_compiler_opts(Opts) ->
-    IncludePath = get_inc_path(Opts),
+    get_compiler_opts(undefined, Opts).
+
+get_compiler_opts(File, Opts) ->
+    IncludePath = get_inc_path(File, Opts),
     Verbose     = get_verbose(Opts),
     PPAsm       = get_pp_asm(Opts),
     Warnings    = get_warnings(Opts),
     Verbose ++ IncludePath ++ PPAsm ++ Warnings.
 
+get_inc_path(undefined, Opts) ->
+    get_inc_path(Opts);
 get_inc_path(File, Opts) ->
-    aeso_compiler:add_include_path(File, get_inc_path(Opts)).
+    [{src_file, File} | aeso_compiler:add_include_path(File, get_inc_path(Opts))].
 
 get_inc_path(Opts) ->
     case [ Path || {include_path, Path} <- Opts ] of

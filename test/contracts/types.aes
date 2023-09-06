@@ -1,0 +1,6 @@
+include "Frac.aes"
+
+contract T =
+  datatype t = OneF(Frac.frac) | TwoF(Frac.frac, Frac.frac)
+
+  record r = {a : int, b : t}

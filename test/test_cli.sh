@@ -3,99 +3,82 @@
 TMPFILE=`mktemp`
 STATUS=0
 
-## Compile
-./aesophia_cli test/contracts/identity.aes -o ${TMPFILE}.aeb
-if [ ! -f ${TMPFILE}.aeb ]; then
-    echo -e "Test FAILED: compile\\n"
-    STATUS=1
-else
-    echo -e "Test PASSED: compile\\n"
-fi
+test_chk () {
+  local res=$1
+  local msg=$2
+  if [ ${res} -ne 0 ]; then
+      echo -e "Test FAILED: ${msg}\\n"
+      STATUS=1
+  else
+      echo -e "Test PASSED: ${msg}\\n"
+  fi
+}
 
 ## Compile
 ./aesophia_cli test/contracts/identity.aes -o ${TMPFILE}.aeb
-if [ ! -f ${TMPFILE}.aeb ]; then
-    echo -e "Test FAILED: compile\\n"
-    STATUS=1
-else
-    echo -e "Test PASSED: compile\\n"
-fi
+[ -f ${TMPFILE}.aeb ]
+test_chk $? "create compile 1"
+
+## Compile
+./aesophia_cli test/contracts/identity.aes -o ${TMPFILE}.aeb
+[ -f ${TMPFILE}.aeb ]
+test_chk $? "create compile 2"
 
 ## Compile
 rm -f ${TMPFILE}.aeb
 ./aesophia_cli test/contracts/include.aes -o ${TMPFILE}.aeb
-if [ ! -f ${TMPFILE}.aeb ]; then
-    echo -e "Test FAILED: compile\\n"
-    STATUS=1
-else
-    echo -e "Test PASSED: compile\\n"
-fi
+[ -f ${TMPFILE}.aeb ]
+test_chk $? "create compile 3"
 
 ## Compile
 rm -f ${TMPFILE}.aeb
 ./aesophia_cli test/contracts/include.aes -i test/contracts/ -o ${TMPFILE}.aeb
-if [ ! -f ${TMPFILE}.aeb ]; then
-    echo -e "Test FAILED: compile\\n"
-    STATUS=1
-else
-    echo -e "Test PASSED: compile\\n"
-fi
+[ -f ${TMPFILE}.aeb ]
+test_chk $? "create compile 4"
 
 ## Create ACI-stub
 ./aesophia_cli --create_stub_aci test/contracts/identity.aes -o ${TMPFILE}.aci_stub
-if [ ! -f ${TMPFILE}.aci_stub ]; then
-    echo -e "Test FAILED: create aci stub\\n"
-    STATUS=1
-else
-    echo -e "Test PASSED: create aci stub\\n"
-fi
+[ -f ${TMPFILE}.aci_stub ]
+test_chk $? "create aci stub 1"
 
 ## Create ACI-stub
 rm -f ${TMPFILE}.aci_stub
 ./aesophia_cli --create_stub_aci test/contracts/include.aes -o ${TMPFILE}.aci_stub
-if [ ! -f ${TMPFILE}.aci_stub ]; then
-    echo -e "Test FAILED: create aci stub\\n"
-    STATUS=1
-else
-    echo -e "Test PASSED: create aci stub\\n"
-fi
-
+[ -f ${TMPFILE}.aci_stub ]
+test_chk $? "create aci stub 2"
 
 ## Create ACI-json
 ./aesophia_cli --create_json_aci test/contracts/identity.aes -o ${TMPFILE}.aci_json
-if [ ! -f ${TMPFILE}.aci_json ]; then
-    echo -e "Test FAILED: create aci json\\n"
-    STATUS=1
-else
-    echo -e "Test PASSED: create aci json\\n"
-fi
+[ -f ${TMPFILE}.aci_json ]
+test_chk $? "create aci json"
 
 ## Create calldata
 ./aesophia_cli --create_calldata test/contracts/identity.aes --call "main_(42)" -o ${TMPFILE}.calldata1
-if [ ! -f ${TMPFILE}.calldata1 ]; then
-    echo -e "Test FAILED: create calldata 1\\n"
-    STATUS=1
-else
-    echo -e "Test PASSED: create calldata 1\\n"
-fi
+[ -f ${TMPFILE}.calldata1 ]
+test_chk $? "create calldata 1"
 
 ## Create calldata
 ./aesophia_cli --create_calldata test/contracts/identity.aes --call "init()" -o ${TMPFILE}.calldata2
-if [ ! -f ${TMPFILE}.calldata2 ]; then
-    echo -e "Test FAILED: create calldata 2\\n"
-    STATUS=1
-else
-    echo -e "Test PASSED: create calldata 2\\n"
-fi
+[ -f ${TMPFILE}.calldata2 ]
+test_chk $? "create calldata 2"
 
 ## Create calldata
 ./aesophia_cli --create_calldata test/contracts/include.aes --call "foo()" -o ${TMPFILE}.calldata3
-if [ ! -f ${TMPFILE}.calldata3 ]; then
-    echo -e "Test FAILED: create calldata 3\\n"
-    STATUS=1
-else
-    echo -e "Test PASSED: create calldata 3\\n"
-fi
+[ -f ${TMPFILE}.calldata3 ]
+test_chk $? "create calldata 3"
+
+## Decode calldata
+./aesophia_cli --decode_calldata cb_KxG3+3bAG1StlAV3 --calldata_fun main_ test/contracts/identity.aes
+test_chk $? "decode calldata 1"
+
+## Encode value
+./aesophia_cli --encode_value "{a = 42, b = OneF(Frac.Pos(1, 1))}" --value_type "r" test/contracts/types.aes
+test_chk $? "encode value"
+
+## Decode value
+ENCODED=`./aesophia_cli --encode_value "{a = 42, b = OneF(Frac.Pos(1, 1))}" --value_type "r" test/contracts/types.aes | grep cb_`
+./aesophia_cli --decode_value ${ENCODED} --value_type "r" test/contracts/types.aes
+test_chk $? "decode value"
 
 rm -rf ${TMPFILE} ${TMPFILE}.*
 
