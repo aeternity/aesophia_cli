@@ -49,3 +49,22 @@ Simple test contracts in `test/contracts/`.
 Internal tests
 --------------
     $ ./test/test_cli.sh
+
+Building a standalone executable
+---
+
+The escript built above requires an Erlang distribution on the target system to run.
+
+It's also possible to package everything into a single executable using Warp (https://github.com/dgiagio/warp/tree/master/examples/erlang):
+
+    $ ./rebar3 escriptize
+
+    $ ./rebar3 release
+
+    $ warp-packer -a linux-x64 -i _build/default/rel/aesophia_cli -e launch -o warp/aesophia_cli
+
+The standalone executable warp/aesophia_cli can now be copied to an x86 linux system without Erlang installed.
+
+Warp also supports windows x86, but this is not tested.
+
+Warp currently does not support arm64.
