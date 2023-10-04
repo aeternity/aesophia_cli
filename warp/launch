@@ -3,5 +3,5 @@
 DIR="$(cd "$(dirname "$0")" ; pwd -P)"
 APP=$DIR/bin/{{release_name}}
 
-exec $APP escript aesophia_cli $@
+exec "$APP" escript aesophia_cli $@
 
