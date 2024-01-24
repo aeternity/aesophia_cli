@@ -26,7 +26,7 @@
     , {decode_value, undefined, "decode_value", string, "Decode a Sophia value from FATE data (cb_...)"}
     , {value_type, undefined, "value_type", string, "Sophia type of/for encoded/decoded value"}
     , {include_path, $i, "include_path", string, "Explicit include path"}
-    , {no_warning, $w, "no_warning", string,
+    , {warning_kind, $w, "no_warning", string,
         "Disabled warnings; " ++ string:join([W || {W, _} <- all_warnings()], " | ")}
     , {error_warning, $e, "error_warning", undefined, "Report warnings as errors"}
     , {to_validate, undefined, "validate", string,
