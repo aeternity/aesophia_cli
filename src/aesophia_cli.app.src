@@ -1,6 +1,6 @@
 {application, aesophia_cli,
  [{description, "CLI for Sophia compiler"},
-  {vsn, "7.4.0"},
+  {vsn, "7.4.1"},
   {registered, []},
   {applications,
    [kernel,

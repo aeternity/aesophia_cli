@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 ### Removed
 
+## [7.4.1]
+### Changed
+- Updated to [Sophia 7.4.1](https://github.com/aeternity/aesophia/blob/master/CHANGELOG.md#741)
+- Updated `aeserialization` to [v1.1.0](https://github.com/aeternity/aeserialization/releases/tag/v1.1.0)
+
 ## [7.4.0]
 ### Changed
 - Updated to [Sophia 7.4.0](https://github.com/aeternity/aesophia/blob/master/CHANGELOG.md#740)
@@ -108,7 +113,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix bug with standard library includes.
 ### Removed
 
-[Unreleased]: https://github.com/aeternity/aesophia_cli/compare/v7.4.0...HEAD
+[Unreleased]: https://github.com/aeternity/aesophia_cli/compare/v7.4.1...HEAD
+[7.4.1]: https://github.com/aeternity/aesophia_cli/compare/v7.4.0...v7.4.1
 [7.4.0]: https://github.com/aeternity/aesophia_cli/compare/v7.3.0...v7.4.0
 [7.3.0]: https://github.com/aeternity/aesophia_cli/compare/v7.2.1...v7.3.0
 [7.2.1]: https://github.com/aeternity/aesophia_cli/compare/v7.1.0...v7.2.1
