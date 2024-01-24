@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 ### Changed
+- Updated to v1.1 of `aeserialization`
 ### Removed
 
 ## [7.4.0]
